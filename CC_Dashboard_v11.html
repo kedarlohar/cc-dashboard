@@ -1,0 +1,1670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CC Dashboard</title>
+<!-- PWA Fullscreen -->
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="CC Dashboard"/>
+<meta name="theme-color" content="#0a0a0a"/>
+<link rel="manifest" href="data:application/json,{&quot;name&quot;:&quot;CC Dashboard&quot;,&quot;short_name&quot;:&quot;CC&quot;,&quot;display&quot;:&quot;standalone&quot;,&quot;background_color&quot;:&quot;#0a0a0a&quot;,&quot;theme_color&quot;:&quot;#0a0a0a&quot;,&quot;start_url&quot;:&quot;.&quot;,&quot;icons&quot;:[{&quot;src&quot;:&quot;https://pharmacycondomwala.in/wp-content/uploads/2026/04/logo-scaled.png&quot;,&quot;sizes&quot;:&quot;192x192&quot;,&quot;type&quot;:&quot;image/png&quot;}]}"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Inter',sans-serif;}
+:root{
+  --bg:#0a0a0a;--sidebar:#0e0e0e;--card:#141414;--card2:#1a1a1a;--border:#222;
+  --green:#4ade80;--green2:#22c55e;--green-dim:rgba(74,222,128,0.08);
+  --text:#f0f0f0;--text2:#777;--text3:#444;
+  --red:#f87171;--yellow:#fbbf24;--blue:#60a5fa;--purple:#a78bfa;--orange:#fb923c;
+  --radius:12px;--radius-sm:8px;
+}
+body{background:var(--bg);color:var(--text);min-height:100vh;display:flex;overflow-x:hidden;}
+
+.sidebar{width:230px;min-height:100vh;background:var(--sidebar);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto;}
+.sidebar::-webkit-scrollbar{width:2px;}
+.sidebar::-webkit-scrollbar-thumb{background:var(--border);}
+.sb-logo{padding:16px;border-bottom:1px solid var(--border);}
+.sb-logo img{width:100%;height:46px;object-fit:contain;border-radius:6px;}
+.sb-sec{padding:12px 14px 4px;font-size:9px;font-weight:700;color:var(--text3);letter-spacing:2px;text-transform:uppercase;}
+.sb-item{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:var(--radius-sm);margin:1px 7px;cursor:pointer;transition:all 0.2s;font-size:12px;font-weight:500;color:var(--text2);}
+.sb-item:hover{background:var(--card);color:var(--text);}
+.sb-item.active{background:var(--green-dim);color:var(--green);border:1px solid rgba(74,222,128,0.12);}
+.sb-badge{margin-left:auto;background:var(--green);color:#000;font-size:9px;font-weight:700;padding:1px 6px;border-radius:20px;min-width:18px;text-align:center;}
+.sb-bottom{margin-top:auto;padding:11px;display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--border);}
+.sb-conn{display:flex;align-items:center;gap:7px;padding:8px 10px;background:var(--card);border-radius:var(--radius-sm);border:1px solid var(--border);}
+.sb-dot{width:7px;height:7px;border-radius:50%;background:var(--text3);flex-shrink:0;}
+.sb-dot.on{background:var(--green);box-shadow:0 0 6px var(--green);animation:pulse 2s infinite;}
+.sb-lbl{font-size:10px;font-weight:600;}
+.sb-sub{font-size:9px;color:var(--text3);}
+.notif-btn{display:flex;align-items:center;gap:7px;padding:8px 10px;background:var(--card);border-radius:var(--radius-sm);border:1px solid var(--border);cursor:pointer;font-size:10px;font-weight:600;color:var(--text2);width:100%;}
+.notif-btn:hover{border-color:rgba(74,222,128,0.3);color:var(--green);}
+.notif-btn.granted{border-color:rgba(74,222,128,0.2);color:var(--green);background:var(--green-dim);}
+.notif-btn.denied{border-color:rgba(248,113,113,0.2);color:var(--red);}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.4;}}
+
+.main{flex:1;overflow-y:auto;display:flex;flex-direction:column;height:100vh;}
+.pane{display:none;flex-direction:column;gap:14px;}
+.pane.active{display:flex;}
+.main::-webkit-scrollbar{width:3px;}
+.main::-webkit-scrollbar-thumb{background:var(--border);}
+.topbar{padding:15px 22px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:5;}
+.tb-title{font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:700;}
+.tb-sub{font-size:10px;color:var(--text2);margin-top:1px;}
+.tb-time{font-family:'Space Grotesk',sans-serif;font-size:19px;font-weight:700;color:var(--green);text-align:right;}
+.tb-date{font-size:10px;color:var(--text2);text-align:right;}
+.content{padding:18px 22px;display:flex;flex-direction:column;gap:14px;}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:15px;}
+.card-title{font-size:9px;font-weight:700;color:var(--text2);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:11px;}
+
+/* HOME */
+.home-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.hs{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:13px;display:flex;align-items:center;gap:10px;}
+.hs-icon{width:38px;height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;}
+.hs-icon.t{background:rgba(248,113,113,0.1);}
+.hs-icon.h{background:rgba(96,165,250,0.1);}
+.hs-icon.u{background:rgba(74,222,128,0.1);}
+.hs-icon.l{background:rgba(251,191,36,0.1);}
+.hs-icon.ac{background:rgba(167,139,250,0.1);}
+.hs-icon.d{background:rgba(74,222,128,0.1);}
+.hs-label{font-size:9px;color:var(--text2);margin-bottom:2px;}
+.hs-val{font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700;line-height:1;}
+.hs-val.t{color:var(--red);}
+.hs-val.h{color:var(--blue);}
+.hs-val.u{color:var(--green);font-size:11px;}
+.hs-val.on{color:var(--green);}
+.hs-val.off{color:var(--text3);}
+.hs-val.unlocked{color:var(--green);}
+.hs-val.locked{color:var(--yellow);}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+
+/* CIRCLE */
+.circ-wrap{position:relative;flex-shrink:0;}
+.circ-svg{transform:rotate(-90deg);}
+.circ-bg{fill:none;stroke:var(--border);stroke-width:8;}
+.circ-fill{fill:none;stroke:url(#gGrad);stroke-width:8;stroke-linecap:round;transition:stroke-dashoffset 1s ease;}
+.circ-fill2{fill:none;stroke:url(#gGrad2);stroke-width:7;stroke-linecap:round;transition:stroke-dashoffset 1s ease;}
+.circ-fill3{fill:none;stroke:url(#gGrad3);stroke-width:7;stroke-linecap:round;transition:stroke-dashoffset 1s ease;}
+.circ-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.circ-pct{font-family:'Space Grotesk',sans-serif;font-weight:700;color:var(--green);}
+.circ-sub{font-size:9px;color:var(--text2);margin-top:1px;}
+.prog-stats{display:flex;flex-direction:column;gap:7px;}
+.ps-row{display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:var(--card2);border-radius:var(--radius-sm);}
+.ps-label{font-size:10px;color:var(--text2);}
+.ps-val{font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:700;}
+.ps-val.g{color:var(--green);}
+.ps-val.r{color:var(--red);}
+.ps-val.y{color:var(--yellow);}
+.ps-val.b{color:var(--blue);}
+
+/* MODAL */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:1000;align-items:center;justify-content:center;backdrop-filter:blur(6px);}
+.modal-bg.show{display:flex;}
+.modal{background:#111;border:1px solid var(--border);border-radius:14px;padding:22px;width:92%;max-width:420px;animation:popIn 0.3s cubic-bezier(0.34,1.56,0.64,1);max-height:90vh;overflow-y:auto;}
+.modal::-webkit-scrollbar{width:2px;}
+@keyframes popIn{from{transform:scale(0.85) translateY(14px);opacity:0;}to{transform:none;opacity:1;}}
+.modal-title{font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:700;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;}
+.modal-close{background:none;border:none;color:var(--text2);font-size:18px;cursor:pointer;}
+.form-group{margin-bottom:11px;}
+.form-label{font-size:9px;font-weight:700;color:var(--text2);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;display:block;}
+.form-input{width:100%;background:var(--card2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 11px;color:var(--text);font-size:12px;outline:none;}
+.form-input:focus{border-color:rgba(74,222,128,0.4);}
+.form-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;}
+.emoji-grid{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;}
+.emoji-btn{width:30px;height:30px;border-radius:6px;border:1px solid var(--border);background:var(--card2);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;}
+.emoji-btn.sel{background:var(--green-dim);border-color:rgba(74,222,128,0.4);}
+.modal-footer{display:flex;gap:7px;margin-top:16px;}
+.btn-cancel{flex:1;padding:8px;border-radius:var(--radius-sm);border:1px solid var(--border);background:transparent;color:var(--text2);font-size:12px;cursor:pointer;}
+.btn-save{flex:2;padding:8px;border-radius:var(--radius-sm);border:none;background:var(--green);color:#000;font-size:12px;font-weight:700;cursor:pointer;}
+.del-modal{background:#111;border:1px solid rgba(248,113,113,0.3);border-radius:14px;padding:22px;width:92%;max-width:320px;text-align:center;animation:popIn 0.3s ease;}
+.del-modal-btns{display:flex;gap:7px;margin-top:14px;}
+.btn-del-confirm{flex:1;padding:9px;border-radius:var(--radius-sm);border:none;background:var(--red);color:#fff;font-size:12px;font-weight:700;cursor:pointer;}
+.btn-del-cancel{flex:1;padding:9px;border-radius:var(--radius-sm);border:1px solid var(--border);background:transparent;color:var(--text2);font-size:12px;cursor:pointer;}
+
+/* REMINDER LIST */
+.reminder-list{display:flex;flex-direction:column;gap:4px;max-height:360px;overflow-y:auto;}
+.reminder-list::-webkit-scrollbar{width:2px;}
+.rem-item{display:flex;align-items:center;gap:8px;padding:7px 9px;background:var(--card2);border-radius:var(--radius-sm);border:1px solid transparent;}
+.rem-item.done{opacity:0.4;}
+.rem-item.active-now{border-color:rgba(74,222,128,0.35);background:#0d1a0d;}
+.rem-check{width:17px;height:17px;border-radius:5px;border:1.5px solid var(--border);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.rem-check.checked{background:var(--green);border-color:var(--green);}
+.rem-check.checked::after{content:'✓';color:#000;font-size:9px;font-weight:700;}
+.rem-emoji{font-size:13px;flex-shrink:0;}
+.rem-info{flex:1;min-width:0;}
+.rem-text{font-size:11px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.rem-item.done .rem-text{text-decoration:line-through;color:var(--text3);}
+.rem-meta{font-size:9px;color:var(--text3);margin-top:1px;}
+.rem-time{font-family:'Space Grotesk',sans-serif;font-size:9px;font-weight:600;color:var(--green);min-width:52px;flex-shrink:0;}
+.rem-freq{font-size:8px;padding:1px 5px;border-radius:7px;flex-shrink:0;}
+.freq-daily{background:rgba(74,222,128,0.1);color:var(--green);}
+.freq-weekly{background:rgba(96,165,250,0.1);color:var(--blue);}
+.freq-monthly{background:rgba(167,139,250,0.1);color:var(--purple);}
+.freq-quarterly{background:rgba(251,191,36,0.1);color:var(--yellow);}
+.rem-actions{display:flex;gap:2px;flex-shrink:0;}
+.rem-btn{background:none;border:none;cursor:pointer;padding:3px 4px;border-radius:4px;font-size:11px;color:var(--text3);}
+.rem-btn:hover{color:var(--blue);background:rgba(96,165,250,0.1);}
+.rem-btn.del:hover{color:var(--red);background:rgba(248,113,113,0.1);}
+.add-rem-btn{display:flex;align-items:center;gap:7px;padding:8px 11px;border-radius:var(--radius-sm);border:1px dashed var(--border);background:transparent;color:var(--text3);font-size:11px;cursor:pointer;width:100%;margin-top:6px;}
+.add-rem-btn:hover{border-color:rgba(74,222,128,0.3);color:var(--green);}
+
+/* SPOTLIGHT */
+.sp-card{background:linear-gradient(135deg,#0d1a0d,var(--card));border:1px solid rgba(74,222,128,0.2);border-radius:var(--radius);padding:14px;position:relative;overflow:hidden;}
+.sp-inner{display:flex;align-items:center;gap:11px;}
+.sp-time{font-family:'Space Grotesk',sans-serif;font-size:20px;font-weight:700;color:var(--green);min-width:68px;}
+.sp-div{width:1px;height:38px;background:linear-gradient(180deg,transparent,rgba(74,222,128,0.3),transparent);}
+.sp-info{flex:1;}
+.sp-emoji{font-size:15px;margin-bottom:2px;}
+.sp-text{font-size:12px;font-weight:600;}
+.sp-sec{font-size:9px;color:var(--text2);margin-top:2px;}
+.sp-btns{display:flex;gap:5px;flex-shrink:0;}
+
+/* BUTTONS */
+.btn{padding:6px 12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:transparent;font-size:11px;font-weight:600;cursor:pointer;transition:all 0.2s;color:var(--text2);}
+.btn:hover{transform:translateY(-1px);}
+.btn:disabled{opacity:0.3;cursor:not-allowed;transform:none!important;}
+.btn-g{border-color:rgba(74,222,128,0.3);color:var(--green);}
+.btn-g:hover{background:rgba(74,222,128,0.1);}
+.btn-r{border-color:rgba(248,113,113,0.3);color:var(--red);}
+.btn-r:hover{background:rgba(248,113,113,0.08);}
+.btn-y{border-color:rgba(251,191,36,0.3);color:var(--yellow);}
+.btn-y:hover{background:rgba(251,191,36,0.08);}
+
+/* MACHINE ROOM */
+.sensor-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.s-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:13px;display:flex;align-items:center;gap:11px;}
+.s-icon{width:38px;height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;}
+.s-icon.t{background:rgba(248,113,113,0.1);}
+.s-icon.h{background:rgba(96,165,250,0.1);}
+.s-icon.u{background:rgba(74,222,128,0.1);}
+.s-label{font-size:9px;color:var(--text2);margin-bottom:2px;}
+.s-val{font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;line-height:1;}
+.s-val.t{color:var(--red);}
+.s-val.h{color:var(--blue);}
+.s-val.u{color:var(--green);font-size:11px;}
+.device-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+.device-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:15px;transition:all 0.3s;}
+.device-card.on{border-color:rgba(74,222,128,0.3);background:#0d170d;}
+.device-card.door-full{grid-column:1/-1;}
+.dev-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:11px;}
+.dev-icon{font-size:20px;margin-bottom:3px;}
+.dev-name{font-size:12px;font-weight:600;}
+.toggle{position:relative;width:38px;height:21px;}
+.toggle input{opacity:0;width:0;height:0;}
+.tog-sl{position:absolute;inset:0;background:var(--border);border-radius:11px;cursor:pointer;transition:all 0.3s;}
+.tog-sl::before{content:'';position:absolute;width:15px;height:15px;left:3px;bottom:3px;background:#555;border-radius:50%;transition:all 0.3s;}
+.toggle input:checked+.tog-sl{background:var(--green);}
+.toggle input:checked+.tog-sl::before{transform:translateX(17px);background:#fff;}
+.pill{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:600;}
+.pill.on,.pill.unlocked{background:rgba(74,222,128,0.1);color:var(--green);border:1px solid rgba(74,222,128,0.2);}
+.pill.off{background:rgba(255,255,255,0.04);color:var(--text3);border:1px solid var(--border);}
+.pill.locked{background:rgba(251,191,36,0.08);color:var(--yellow);border:1px solid rgba(251,191,36,0.2);}
+.pill-dot{width:4px;height:4px;border-radius:50%;background:currentColor;}
+.pill.on .pill-dot,.pill.unlocked .pill-dot{animation:pulse 1.5s infinite;}
+.door-status-card{background:var(--card2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:11px;margin-bottom:11px;}
+.dsc-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;}
+.dsc-row:last-child{margin-bottom:0;}
+.dsc-label{font-size:10px;color:var(--text2);}
+.dsc-val{font-family:'Space Grotesk',sans-serif;font-size:10px;font-weight:600;}
+.door-btns{display:flex;gap:6px;margin-top:9px;}
+
+/* HISTORY */
+.hist-list{display:flex;flex-direction:column;gap:5px;max-height:400px;overflow-y:auto;}
+.hist-list::-webkit-scrollbar{width:2px;}
+.hist-item{display:flex;align-items:center;gap:10px;padding:9px 11px;background:var(--card2);border-radius:var(--radius-sm);border-left:3px solid transparent;}
+.hist-item.unlock{border-left-color:var(--green);}
+.hist-item.lock{border-left-color:var(--yellow);}
+.hist-icon{font-size:16px;flex-shrink:0;}
+.hist-info{flex:1;}
+.hist-action{font-size:11px;font-weight:600;}
+.hist-action.unlock{color:var(--green);}
+.hist-action.lock{color:var(--yellow);}
+.hist-badge{display:inline-flex;align-items:center;gap:3px;padding:1px 6px;border-radius:8px;font-size:9px;font-weight:600;margin-top:2px;}
+.src-rfid{background:rgba(167,139,250,0.1);color:var(--purple);border:1px solid rgba(167,139,250,0.2);}
+.src-button{background:rgba(96,165,250,0.1);color:var(--blue);border:1px solid rgba(96,165,250,0.2);}
+.src-dashboard{background:rgba(74,222,128,0.1);color:var(--green);border:1px solid rgba(74,222,128,0.2);}
+.src-autolock{background:rgba(251,191,36,0.1);color:var(--yellow);border:1px solid rgba(251,191,36,0.2);}
+.src-default{background:rgba(255,255,255,0.04);color:var(--text3);border:1px solid var(--border);}
+.hist-time{font-family:'Space Grotesk',sans-serif;font-size:10px;color:var(--text2);text-align:right;flex-shrink:0;}
+.hist-date{font-size:9px;color:var(--text3);margin-top:1px;text-align:right;}
+.hist-empty{text-align:center;padding:24px;color:var(--text3);font-size:11px;}
+.legend{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;}
+
+/* MAINTENANCE */
+.maint-machine-tabs{display:flex;gap:3px;background:var(--card2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:3px;margin-bottom:12px;flex-wrap:wrap;}
+.maint-machine-tab{flex:1;min-width:70px;padding:6px 7px;border:none;background:transparent;font-size:9px;font-weight:700;color:var(--text3);cursor:pointer;border-radius:5px;transition:all 0.2s;white-space:nowrap;}
+.maint-machine-tab.active{background:var(--card);color:var(--green);}
+.maint-machine-pane{display:none;}
+.maint-machine-pane.active{display:block;}
+.maint-freq-title{font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;padding:8px 0 5px;border-bottom:1px solid var(--border);margin-bottom:7px;display:flex;align-items:center;justify-content:space-between;}
+.maint-freq-title.daily{color:var(--green);}
+.maint-freq-title.weekly{color:var(--blue);}
+.maint-freq-title.monthly{color:var(--purple);}
+.maint-freq-title.quarterly{color:var(--yellow);}
+.maint-item{display:flex;align-items:center;gap:8px;padding:6px 9px;background:var(--card2);border-radius:var(--radius-sm);margin-bottom:3px;border:1px solid transparent;transition:all 0.2s;}
+.maint-item:hover{border-color:var(--border);}
+.maint-item.done{opacity:0.4;}
+.maint-check{width:16px;height:16px;border-radius:4px;border:1.5px solid var(--border);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.maint-check.checked{background:var(--green);border-color:var(--green);}
+.maint-check.checked::after{content:'✓';color:#000;font-size:9px;font-weight:700;}
+.maint-text{font-size:11px;flex:1;}
+.maint-item.done .maint-text{text-decoration:line-through;color:var(--text3);}
+.maint-time{font-family:'Space Grotesk',sans-serif;font-size:9px;color:var(--text3);flex-shrink:0;}
+.maint-del{background:none;border:none;cursor:pointer;padding:2px 4px;border-radius:4px;font-size:10px;color:var(--text3);flex-shrink:0;}
+.maint-del:hover{color:var(--red);background:rgba(248,113,113,0.1);}
+
+/* HOME MAINTENANCE CARD */
+.home-maint-item{display:flex;align-items:center;gap:8px;padding:7px 9px;background:var(--card2);border-radius:var(--radius-sm);margin-bottom:3px;border-left:2px solid transparent;}
+.home-maint-item.daily{border-left-color:var(--green);}
+.home-maint-item.weekly{border-left-color:var(--blue);}
+.home-maint-item.monthly{border-left-color:var(--purple);}
+.home-maint-item.active-m{background:#0d1a0d;border-color:var(--green);}
+.hm-machine{font-size:9px;font-weight:700;color:var(--text3);min-width:60px;flex-shrink:0;}
+.hm-text{font-size:11px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.hm-time{font-family:'Space Grotesk',sans-serif;font-size:9px;color:var(--text2);flex-shrink:0;}
+.hm-eta{font-size:9px;color:var(--green);flex-shrink:0;min-width:28px;text-align:right;}
+
+/* LOG */
+.log-list{display:flex;flex-direction:column;gap:4px;max-height:130px;overflow-y:auto;}
+.log-list::-webkit-scrollbar{width:2px;}
+.log-entry{display:flex;align-items:center;gap:7px;padding:5px 8px;background:var(--card2);border-radius:5px;font-size:10px;}
+.log-ts{color:var(--text3);font-size:9px;flex-shrink:0;}
+.log-dot{width:4px;height:4px;border-radius:50%;flex-shrink:0;}
+.log-msg{flex:1;color:var(--text2);}
+.log-entry.s .log-dot{background:var(--green);}
+.log-entry.s .log-msg{color:var(--green);}
+.log-entry.d .log-dot{background:var(--red);}
+.log-entry.d .log-msg{color:var(--red);}
+.log-entry.i .log-dot{background:var(--blue);}
+.log-entry.w .log-dot{background:var(--yellow);}
+
+/* SUB TABS */
+.sub-tabs{display:flex;gap:3px;background:var(--card2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:3px;margin-bottom:11px;}
+.sub-tab{flex:1;padding:6px;border:none;background:transparent;font-size:10px;font-weight:600;color:var(--text3);cursor:pointer;border-radius:5px;transition:all 0.2s;}
+.sub-tab.active{background:var(--card);color:var(--green);}
+.tab-pane{display:none;}
+.tab-pane.active{display:block;}
+.sch-row{display:flex;align-items:center;gap:9px;padding:7px 10px;background:var(--card2);border-radius:var(--radius-sm);margin-bottom:4px;}
+.sch-time{font-family:'Space Grotesk',sans-serif;font-size:10px;font-weight:600;color:var(--green);min-width:50px;}
+.sch-text{font-size:11px;color:var(--text2);}
+.note-row{display:flex;gap:7px;margin-bottom:8px;}
+.note-inp{flex:1;background:var(--card2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:7px 10px;color:var(--text);font-size:11px;outline:none;}
+.note-inp:focus{border-color:rgba(74,222,128,0.3);}
+.note-btn{padding:7px 12px;background:var(--green-dim);border:1px solid rgba(74,222,128,0.2);border-radius:var(--radius-sm);color:var(--green);font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;}
+.note-entry{display:flex;gap:8px;padding:5px 0;border-top:1px solid var(--border);font-size:11px;color:var(--text2);}
+.note-t{font-size:9px;color:var(--text3);min-width:46px;font-family:'Space Grotesk',sans-serif;}
+
+/* POPUP */
+.popup-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:9999;align-items:center;justify-content:center;backdrop-filter:blur(8px);}
+.popup-bg.show{display:flex;}
+.popup-card{background:#111;border:1px solid rgba(74,222,128,0.3);border-radius:14px;padding:26px 22px;max-width:290px;width:92%;text-align:center;box-shadow:0 0 50px rgba(74,222,128,0.12);animation:popIn 0.35s cubic-bezier(0.34,1.56,0.64,1);}
+.popup-tag{font-size:9px;font-weight:700;color:var(--green);letter-spacing:3px;margin-bottom:9px;}
+.popup-emoji{font-size:40px;margin-bottom:7px;}
+.popup-time{font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:700;color:var(--green);margin-bottom:5px;}
+.popup-task{font-size:13px;font-weight:600;margin-bottom:4px;line-height:1.4;}
+.popup-sec{font-size:9px;color:var(--text2);letter-spacing:2px;margin-bottom:18px;}
+.popup-ack{width:100%;padding:11px;border:2px solid var(--green);border-radius:8px;background:rgba(74,222,128,0.08);color:var(--green);font-size:12px;font-weight:700;cursor:pointer;margin-bottom:6px;pointer-events:auto!important;opacity:1!important;}
+.popup-ack:hover{background:rgba(74,222,128,0.16);}
+.popup-snooze{width:100%;padding:7px;border:1px solid var(--border);border-radius:7px;background:transparent;color:var(--text2);font-size:10px;cursor:pointer;pointer-events:auto!important;opacity:1!important;}
+.popup-snooze:hover{border-color:var(--yellow);color:var(--yellow);}
+.popup-beep{font-size:9px;color:var(--text3);margin-top:5px;animation:blink2 1s infinite;}
+@keyframes blink2{0%,100%{opacity:1;}50%{opacity:0.3;}}
+.hidden{display:none!important;}
+
+@media(max-width:700px){
+  .sidebar{display:none;}
+  .sensor-row,.device-grid,.two-col,.home-grid,.three-col{grid-template-columns:1fr 1fr;}
+  .device-card.door-full{grid-column:1/-1;}
+  .content{padding:12px;}
+}
+</style>
+</head>
+<body>
+
+<!-- ADD/EDIT REMINDER MODAL -->
+<div class="modal-bg" id="addModal">
+  <div class="modal">
+    <div class="modal-title"><span id="modalTitleTxt">Add Reminder</span><button class="modal-close" onclick="closeModal()">×</button></div>
+    <div class="form-group"><label class="form-label">Task Name</label><input type="text" class="form-input" id="newText" placeholder="e.g. Nozzle check..."/></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Hour (1-12)</label><input type="number" class="form-input" id="newHour" min="1" max="12" placeholder="9"/></div>
+      <div class="form-group"><label class="form-label">Minute</label><input type="number" class="form-input" id="newMin" min="0" max="59" placeholder="30"/></div>
+      <div class="form-group"><label class="form-label">AM/PM</label><select class="form-input" id="newAMPM"><option>AM</option><option>PM</option></select></div>
+    </div>
+    <div class="form-group"><label class="form-label">Frequency</label>
+      <select class="form-input" id="newFreq"><option value="daily">Daily</option><option value="weekly">Weekly (Sunday)</option><option value="monthly">Monthly</option><option value="quarterly">Every 3-6 Months</option></select>
+    </div>
+    <div class="form-group"><label class="form-label">Section / Category</label><input type="text" class="form-input" id="newSection" placeholder="e.g. MORNING SESSION"/></div>
+    <div class="form-group"><label class="form-label">Emoji</label><div class="emoji-grid" id="emojiGrid"></div></div>
+    <div class="modal-footer"><button class="btn-cancel" onclick="closeModal()">Cancel</button><button class="btn-save" id="modalSaveBtn" onclick="saveReminder()">+ Add</button></div>
+  </div>
+</div>
+
+<!-- ADD MAINTENANCE MODAL -->
+<div class="modal-bg" id="maintModal">
+  <div class="modal">
+    <div class="modal-title"><span>Add Maintenance Task</span><button class="modal-close" onclick="closeMaintModal()">×</button></div>
+    <div class="form-group"><label class="form-label">Task Name</label><input type="text" class="form-input" id="mNewText" placeholder="e.g. Nozzle check..."/></div>
+    <div class="form-group"><label class="form-label">Machine</label>
+      <select class="form-input" id="mNewMachine"><option value="dtf">DTF Printer</option><option value="embroidery">Embroidery</option><option value="inverter">Inverter+Battery</option><option value="printer3d">3D Printer</option></select>
+    </div>
+    <div class="form-group"><label class="form-label">Frequency</label>
+      <select class="form-input" id="mNewFreq"><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option><option value="quarterly">3-6 Months</option></select>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Hour (1-12)</label><input type="number" class="form-input" id="mNewHour" min="1" max="12" placeholder="9"/></div>
+      <div class="form-group"><label class="form-label">Minute</label><input type="number" class="form-input" id="mNewMin" min="0" max="59" placeholder="30"/></div>
+      <div class="form-group"><label class="form-label">AM/PM</label><select class="form-input" id="mNewAMPM"><option>AM</option><option>PM</option></select></div>
+    </div>
+    <div class="form-group"><label class="form-label">Emoji</label><div class="emoji-grid" id="maintEmojiGrid"></div></div>
+    <div class="modal-footer"><button class="btn-cancel" onclick="closeMaintModal()">Cancel</button><button class="btn-save" onclick="saveMaintTask()">+ Add Task</button></div>
+  </div>
+</div>
+
+<!-- DELETE CONFIRM -->
+<div class="modal-bg" id="delModal">
+  <div class="del-modal">
+    <div style="font-size:30px;margin-bottom:9px;">🗑️</div>
+    <h3 style="font-family:'Space Grotesk',sans-serif;font-size:14px;margin-bottom:5px;">Delete?</h3>
+    <p id="delModalText" style="font-size:11px;color:var(--text2);line-height:1.5;"></p>
+    <div class="del-modal-btns"><button class="btn-del-cancel" onclick="document.getElementById('delModal').classList.remove('show')">Cancel</button><button class="btn-del-confirm" onclick="confirmDelete()">Delete</button></div>
+  </div>
+</div>
+
+<!-- REMINDER POPUP -->
+<div class="popup-bg" id="popup">
+  <div class="popup-card">
+    <div class="popup-tag">⚡ REMINDER ALERT</div>
+    <div class="popup-emoji" id="pEmoji">⏰</div>
+    <div class="popup-time" id="pTime">--:--</div>
+    <div class="popup-task" id="pTask"></div>
+    <div class="popup-sec" id="pSec"></div>
+    <button class="popup-ack" onclick="doAck()">✓ &nbsp;Acknowledge</button>
+    <button class="popup-snooze" onclick="doSnooze()">⏱ &nbsp;Snooze 5 min</button>
+    <div class="popup-beep" id="beepStatus">🔊 Beeping until acknowledged...</div>
+  </div>
+</div>
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="sb-logo"><img src="https://pharmacycondomwala.in/wp-content/uploads/2026/04/logo-scaled.png" onerror="this.style.display='none'"/></div>
+  <div class="sb-sec">Main</div>
+  <div class="sb-item active" onclick="switchPage('home',this)"><span>🏠</span> Home</div>
+  <div class="sb-item" onclick="switchPage('reminders',this)"><span>⏰</span> Reminders <span class="sb-badge" id="sbBadge">0</span></div>
+  <div class="sb-item" onclick="switchPage('history',this)"><span>🔑</span> Door History</div>
+  <div class="sb-sec">Rooms</div>
+  <div class="sb-item" onclick="switchPage('machineroom',this)"><span>🏭</span> Machine Room</div>
+  <div class="sb-item" onclick="switchPage('studioroom',this)"><span>🎨</span> Studio Room</div>
+  <div class="sb-sec">Maintenance</div>
+  <div class="sb-item" onclick="switchPage('maintenance',this)"><span>🔧</span> Machine Maintenance <span class="sb-badge" id="maintBadge" style="background:var(--blue);">0</span></div>
+  <div class="sb-bottom">
+    <button class="notif-btn" id="notifBtn" onclick="requestNotifPermission()"><span id="notifIcon">🔔</span><span id="notifBtnTxt">Enable Notifications</span></button>
+    <div class="sb-conn"><div class="sb-dot" id="sbDot"></div><div><div class="sb-lbl" id="sbConnLbl">Connecting</div><div class="sb-sub">Firebase RTDB</div></div></div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="topbar">
+    <div><div class="tb-title" id="pageTitle">Home</div><div class="tb-sub" id="pageSub">Overview — all systems at a glance</div></div>
+    <div><div class="tb-time" id="topTime">12:00</div><div class="tb-date" id="topDate">--</div></div>
+  </div>
+  <div class="content">
+
+    <!-- ══ HOME ══ -->
+    <div class="pane active" id="pane-home">
+
+      <!-- 1st: Temp & Humidity -->
+      <div>
+        <div class="card-title">🌡️ Environment</div>
+        <div class="home-grid">
+          <div class="hs"><div class="hs-icon t">🌡️</div><div><div class="hs-label">Temperature</div><div class="hs-val t" id="hTempVal">--°C</div></div></div>
+          <div class="hs"><div class="hs-icon h">💧</div><div><div class="hs-label">Humidity</div><div class="hs-val h" id="hHumVal">--%</div></div></div>
+          <div class="hs"><div class="hs-icon u">🕐</div><div><div class="hs-label">Last Update</div><div class="hs-val u" id="hLastUpdate">--:--</div></div></div>
+        </div>
+      </div>
+
+      <!-- 2nd: Reminder progress + Active -->
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title">📋 Reminder Progress</div>
+          <div style="display:flex;align-items:center;gap:14px;">
+            <div class="circ-wrap" style="width:84px;height:84px;">
+              <svg class="circ-svg" width="84" height="84" viewBox="0 0 84 84">
+                <defs><linearGradient id="gGrad2" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#4ade80"/><stop offset="100%" style="stop-color:#22c55e"/></linearGradient></defs>
+                <circle class="circ-bg" cx="42" cy="42" r="33"/>
+                <circle class="circ-fill2" id="hCircFill" cx="42" cy="42" r="33" stroke-dasharray="207.3" stroke-dashoffset="207.3"/>
+              </svg>
+              <div class="circ-center"><div class="circ-pct" id="hCircPct" style="font-size:16px;">0%</div><div class="circ-sub">Done</div></div>
+            </div>
+            <div style="flex:1;">
+              <div class="ps-row" style="margin-bottom:5px;"><span class="ps-label">✅ Done</span><span class="ps-val g" id="hSComp">0</span></div>
+              <div class="ps-row"><span class="ps-label">⏳ Left</span><span class="ps-val r" id="hSRem">0</span></div>
+            </div>
+          </div>
+        </div>
+        <div style="background:linear-gradient(135deg,#0d1a0d,var(--card));border:1px solid rgba(74,222,128,0.2);border-radius:var(--radius);padding:14px;">
+          <div style="font-size:8px;font-weight:700;color:var(--green);letter-spacing:2px;margin-bottom:7px;">⚡ ACTIVE REMINDER</div>
+          <div id="hNoActive" style="color:var(--text3);font-size:11px;padding:6px 0;">No active reminder</div>
+          <div id="hActiveRem" class="hidden">
+            <div id="hATime" style="font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;color:var(--green);margin-bottom:4px;"></div>
+            <div id="hAEmoji" style="font-size:16px;margin-bottom:2px;"></div>
+            <div id="hAText" style="font-size:12px;font-weight:600;margin-bottom:2px;"></div>
+            <div id="hASec" style="font-size:9px;color:var(--text2);letter-spacing:1px;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3rd: Maintenance -->
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:11px;">
+          <div class="card-title" style="margin-bottom:0;">🔧 Machine Maintenance — Today</div>
+          <span id="homeMaintBadge" style="font-size:9px;color:var(--blue);font-weight:600;"></span>
+        </div>
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:12px;">
+          <div class="circ-wrap" style="width:72px;height:72px;">
+            <svg class="circ-svg" width="72" height="72" viewBox="0 0 72 72">
+              <defs><linearGradient id="gGrad3" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#60a5fa"/><stop offset="100%" style="stop-color:#3b82f6"/></linearGradient></defs>
+              <circle class="circ-bg" cx="36" cy="36" r="28"/>
+              <circle class="circ-fill3" id="maintCircFill" cx="36" cy="36" r="28" stroke-dasharray="175.9" stroke-dashoffset="175.9"/>
+            </svg>
+            <div class="circ-center"><div class="circ-pct" id="maintCircPct" style="font-size:13px;color:var(--blue);">0%</div><div class="circ-sub">Done</div></div>
+          </div>
+          <div style="flex:1;">
+            <div class="ps-row" style="margin-bottom:5px;"><span class="ps-label">✅ Checked</span><span class="ps-val b" id="maintDoneCount">0</span></div>
+            <div class="ps-row"><span class="ps-label">⏳ Pending</span><span class="ps-val r" id="maintPendCount">0</span></div>
+          </div>
+        </div>
+        <div style="font-size:9px;font-weight:700;color:var(--blue);letter-spacing:1.5px;margin-bottom:6px;">ACTIVE / UPCOMING</div>
+        <div id="homeMaintList" style="display:flex;flex-direction:column;gap:3px;">
+          <div style="color:var(--text3);font-size:11px;padding:8px 0;">Loading...</div>
+        </div>
+      </div>
+
+      <!-- 4th: Machine Room status -->
+      <div>
+        <div class="card-title">🏭 Machine Room</div>
+        <div class="home-grid">
+          <div class="hs"><div class="hs-icon l">💡</div><div><div class="hs-label">Light</div><div class="hs-val off" id="hLightVal">Off</div></div></div>
+          <div class="hs"><div class="hs-icon ac">❄️</div><div><div class="hs-label">AC</div><div class="hs-val off" id="hACVal">Off</div></div></div>
+          <div class="hs"><div class="hs-icon d">🚪</div><div><div class="hs-label">Door</div><div class="hs-val locked" id="hDoorVal">Locked</div></div></div>
+        </div>
+      </div>
+
+      <!-- 5th: Studio Room status -->
+      <div>
+        <div class="card-title" style="padding:0 0 10px;">🎨 Studio Room</div>
+        <div class="home-grid">
+          <div class="hs" style="cursor:pointer;" onclick="switchPage('studioroom',document.querySelector('[onclick*=studioroom]'))">
+            <div class="hs-icon" style="background:rgba(44,255,208,0.1);">💡</div>
+            <div><div class="hs-label">Light 1</div><div class="hs-val off" id="hSL1">Off</div></div>
+          </div>
+          <div class="hs" style="cursor:pointer;" onclick="switchPage('studioroom',document.querySelector('[onclick*=studioroom]'))">
+            <div class="hs-icon" style="background:rgba(44,255,208,0.1);">💡</div>
+            <div><div class="hs-label">Light 2</div><div class="hs-val off" id="hSL2">Off</div></div>
+          </div>
+          <div class="hs" style="cursor:pointer;" onclick="switchPage('studioroom',document.querySelector('[onclick*=studioroom]'))">
+            <div class="hs-icon" style="background:rgba(44,255,208,0.1);">💡</div>
+            <div><div class="hs-label">Light 3</div><div class="hs-val off" id="hSL3">Off</div></div>
+          </div>
+          <div class="hs" style="cursor:pointer;" onclick="switchPage('studioroom',document.querySelector('[onclick*=studioroom]'))">
+            <div class="hs-icon" style="background:rgba(167,139,250,0.1);">❄️</div>
+            <div><div class="hs-label">Studio AC</div><div class="hs-val off" id="hSAC">Off</div></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ══ REMINDERS ══ -->
+    <div class="pane" id="pane-reminders">
+      <div class="card">
+        <div class="card-title">Today's Progress</div>
+        <div style="display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:center;">
+          <div class="circ-wrap" style="width:110px;height:110px;">
+            <svg class="circ-svg" width="110" height="110" viewBox="0 0 110 110">
+              <defs><linearGradient id="gGrad" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#4ade80"/><stop offset="100%" style="stop-color:#22c55e"/></linearGradient></defs>
+              <circle class="circ-bg" cx="55" cy="55" r="45"/>
+              <circle class="circ-fill" id="circFill" cx="55" cy="55" r="45" stroke-dasharray="282.7" stroke-dashoffset="282.7"/>
+            </svg>
+            <div class="circ-center"><div class="circ-pct" id="circPct" style="font-size:20px;">0%</div><div class="circ-sub">Done</div></div>
+          </div>
+          <div class="prog-stats">
+            <div class="ps-row"><span class="ps-label">✅ Completed</span><span class="ps-val g" id="sComp">0</span></div>
+            <div class="ps-row"><span class="ps-label">🕐 Remaining</span><span class="ps-val r" id="sRem">0</span></div>
+            <div class="ps-row"><span class="ps-label">⏱ Next in</span><span class="ps-val y" id="sNext">--</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="two-col">
+        <div>
+          <div class="card-title">Active Now</div>
+          <div class="sp-card">
+            <div class="hist-empty" id="noActive" style="padding:14px;font-size:11px;">No active reminder</div>
+            <div class="sp-inner hidden" id="activeRem">
+              <div class="sp-time" id="aTime">--:--</div>
+              <div class="sp-div"></div>
+              <div class="sp-info"><div class="sp-emoji" id="aEmoji"></div><div class="sp-text" id="aText"></div><div class="sp-sec" id="aSec"></div></div>
+              <div class="sp-btns"><button class="btn btn-g" onclick="doAck()">✓</button><button class="btn btn-y" onclick="doSnooze()">⏱</button></div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="card-title">Upcoming <span id="upCount" style="color:var(--green);"></span></div>
+          <div id="upcomingList"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:11px;">
+          <div class="card-title" style="margin-bottom:0;">All Reminders</div>
+          <button class="btn btn-g" onclick="openModal()">+ Add</button>
+        </div>
+        <div class="reminder-list" id="reminderList"></div>
+        <button class="add-rem-btn" onclick="openModal()">＋ Add new reminder</button>
+      </div>
+      <div class="card">
+        <div class="sub-tabs">
+          <button class="sub-tab active" onclick="switchSub('weekly',this)">Weekly</button>
+          <button class="sub-tab" onclick="switchSub('monthly',this)">Monthly</button>
+          <button class="sub-tab" onclick="switchSub('notes',this)">Notes</button>
+        </div>
+        <div id="st-weekly" class="tab-pane active">
+          <div class="card-title" style="color:var(--green);">Sunday — Machine Day (Weekly Off)</div>
+          <div class="sch-row"><span class="sch-time">10:00 AM</span><span class="sch-text">🛠 Machine Maintenance — deep cleaning</span></div>
+          <div class="sch-row"><span class="sch-time">11:30 AM</span><span class="sch-text">🧹 Full setup cleaning</span></div>
+          <div class="sch-row"><span class="sch-time">1:00 PM</span><span class="sch-text">📦 Stock check</span></div>
+          <div class="sch-row"><span class="sch-time">3:00 PM</span><span class="sch-text">🧪 Equipment testing</span></div>
+          <div class="sch-row"><span class="sch-time">7:00 PM</span><span class="sch-text">💰 Weekly cash flow review</span></div>
+          <div class="sch-row"><span class="sch-time">7:30 PM</span><span class="sch-text">👥 Team meeting</span></div>
+        </div>
+        <div id="st-monthly" class="tab-pane">
+          <div class="card-title" style="color:var(--red);">Month End — Last 2 Days</div>
+          <div class="sch-row"><span class="sch-time">10:00 AM</span><span class="sch-text">📊 Total sales calculation</span></div>
+          <div class="sch-row"><span class="sch-time">11:00 AM</span><span class="sch-text">💹 Profit calculation</span></div>
+          <div class="sch-row"><span class="sch-time">12:00 PM</span><span class="sch-text">🏦 EMI preparation</span></div>
+          <div class="sch-row"><span class="sch-time">5:00 PM</span><span class="sch-text">💳 Supplier payments</span></div>
+          <div class="sch-row"><span class="sch-time">7:00 PM</span><span class="sch-text">🚀 Business growth review</span></div>
+        </div>
+        <div id="st-notes" class="tab-pane">
+          <div class="note-row"><input type="text" class="note-inp" id="noteInp" placeholder="Add a quick note..."/><button class="note-btn" onclick="addNote()">+ Save</button></div>
+          <div id="noteList"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ MACHINE ROOM ══ -->
+    <div class="pane" id="pane-machineroom">
+      <div class="sensor-row">
+        <div class="s-card"><div class="s-icon t">🌡️</div><div><div class="s-label">Temperature</div><div class="s-val t" id="tempVal">--°C</div></div></div>
+        <div class="s-card"><div class="s-icon h">💧</div><div><div class="s-label">Humidity</div><div class="s-val h" id="humVal">--%</div></div></div>
+        <div class="s-card"><div class="s-icon u">🕐</div><div><div class="s-label">Last Update</div><div class="s-val u" id="lastUpdate">--:--:--</div></div></div>
+      </div>
+      <div>
+        <div class="card-title">Device Control</div>
+        <div class="device-grid">
+          <div class="device-card door-full" id="doorCard">
+            <div class="dev-header">
+              <div><div class="dev-icon">🚪</div><div class="dev-name">Door Lock</div></div>
+              <div class="pill locked" id="doorPill"><div class="pill-dot"></div><span id="doorPillTxt">Locked</span></div>
+            </div>
+            <div class="door-status-card">
+              <div class="dsc-row"><span class="dsc-label">Last Action</span><span class="dsc-val" id="lastAction" style="color:var(--text2);">--</span></div>
+              <div class="dsc-row"><span class="dsc-label">Source</span><span id="lastSourceBadge">--</span></div>
+              <div class="dsc-row"><span class="dsc-label">Time</span><span class="dsc-val" id="lastDoorTime" style="color:var(--text3);">--</span></div>
+            </div>
+            <div style="font-size:10px;color:var(--text3);margin-bottom:3px;">Auto-locks after 5 seconds</div>
+            <div class="door-btns"><button class="btn btn-g" onclick="ctrlDoor(true)">🔓 Unlock</button><button class="btn btn-y" onclick="ctrlDoor(false)">🔒 Lock</button></div>
+          </div>
+          <div class="device-card" id="lightCard">
+            <div class="dev-header"><div><div class="dev-icon">💡</div><div class="dev-name">Light</div></div><label class="toggle"><input type="checkbox" id="lightTog" onchange="ctrlLight(this.checked)"/><span class="tog-sl"></span></label></div>
+            <div class="pill off" id="lightPill"><div class="pill-dot"></div><span id="lightTxt">Off</span></div>
+          </div>
+          <div class="device-card" id="acCard">
+            <div class="dev-header"><div><div class="dev-icon">❄️</div><div class="dev-name">Air Cond.</div></div><label class="toggle"><input type="checkbox" id="acTog" onchange="ctrlAC(this.checked)"/><span class="tog-sl"></span></label></div>
+            <div class="pill off" id="acPill"><div class="pill-dot"></div><span id="acTxt">Off</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="card"><div class="card-title">Activity Log</div><div class="log-list" id="logList"><div class="log-entry i"><span class="log-ts">--:--:--</span><div class="log-dot"></div><span class="log-msg">System initializing...</span></div></div></div>
+    </div>
+
+    <!-- ══ DOOR HISTORY ══ -->
+    <div class="pane" id="pane-history">
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;">
+          <div class="card-title" style="margin-bottom:0;">🔑 Door History</div>
+          <button class="btn btn-r" onclick="clearHistory()">Clear All</button>
+        </div>
+        <div class="legend">
+          <span class="hist-badge src-rfid">📡 RFID</span>
+          <span class="hist-badge src-dashboard">💻 Dashboard</span>
+          <span class="hist-badge src-autolock">⏱ AutoLock</span>
+        </div>
+        <div class="hist-list" id="histList"><div class="hist-empty">No history yet. Unlock the door to start recording.</div></div>
+      </div>
+    </div>
+
+    <!-- ══ STUDIO ROOM ══ -->
+    <div class="pane" id="pane-studioroom">
+      <!-- Status bar -->
+      <div class="sensor-row">
+        <div class="s-card"><div class="s-icon" style="background:rgba(74,222,128,0.1);">💡</div><div><div class="s-label">Active Lights</div><div class="s-val" style="color:var(--green);font-size:20px;" id="sActiveLights">0</div></div></div>
+        <div class="s-card"><div class="s-icon ac">❄️</div><div><div class="s-label">Studio AC</div><div class="s-val u" id="sStudioConn">Standby</div></div></div>
+        <div class="s-card"><div class="s-icon u">🔗</div><div><div class="s-label">Firebase</div><div class="s-val u" id="sFirebaseStatus">--</div></div></div>
+      </div>
+      <!-- All ON/OFF -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <button class="btn btn-g" onclick="ctrlStudioAll(true)" style="padding:12px;font-size:13px;font-weight:700;">⚡ All ON</button>
+        <button class="btn btn-r" onclick="ctrlStudioAll(false)" style="padding:12px;font-size:13px;font-weight:700;">⏹ All OFF</button>
+      </div>
+      <!-- Device Controls -->
+      <div>
+        <div class="card-title">Studio Device Control</div>
+        <div class="device-grid">
+          <div class="device-card" id="sCard-light1">
+            <div class="dev-header">
+              <div><div class="dev-icon">💡</div><div class="dev-name">Light 1</div></div>
+              <label class="toggle"><input type="checkbox" id="sTog-light1" onchange="ctrlStudio('light1',this.checked)"/><span class="tog-sl"></span></label>
+            </div>
+            <div class="pill off" id="sPill-light1"><div class="pill-dot"></div><span id="sTxt-light1">Off</span></div>
+          </div>
+          <div class="device-card" id="sCard-light2">
+            <div class="dev-header">
+              <div><div class="dev-icon">💡</div><div class="dev-name">Light 2</div></div>
+              <label class="toggle"><input type="checkbox" id="sTog-light2" onchange="ctrlStudio('light2',this.checked)"/><span class="tog-sl"></span></label>
+            </div>
+            <div class="pill off" id="sPill-light2"><div class="pill-dot"></div><span id="sTxt-light2">Off</span></div>
+          </div>
+          <div class="device-card" id="sCard-light3">
+            <div class="dev-header">
+              <div><div class="dev-icon">💡</div><div class="dev-name">Light 3</div></div>
+              <label class="toggle"><input type="checkbox" id="sTog-light3" onchange="ctrlStudio('light3',this.checked)"/><span class="tog-sl"></span></label>
+            </div>
+            <div class="pill off" id="sPill-light3"><div class="pill-dot"></div><span id="sTxt-light3">Off</span></div>
+          </div>
+          <div class="device-card" id="sCard-ac">
+            <div class="dev-header">
+              <div><div class="dev-icon">❄️</div><div class="dev-name">Air Cond.</div></div>
+              <label class="toggle"><input type="checkbox" id="sTog-ac" onchange="ctrlStudio('ac',this.checked)"/><span class="tog-sl"></span></label>
+            </div>
+            <div class="pill off" id="sPill-ac"><div class="pill-dot"></div><span id="sTxt-ac">Off</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ MACHINE MAINTENANCE ══ -->
+    <div class="pane" id="pane-maintenance">
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <div class="card-title" style="margin-bottom:0;">🔧 Machine Maintenance</div>
+          <div style="display:flex;gap:6px;">
+            <button class="btn btn-g" onclick="openMaintModal()" style="font-size:10px;">+ Add Task</button>
+            <button class="btn btn-r" onclick="clearMaintChecks()" style="font-size:10px;">Reset</button>
+          </div>
+        </div>
+        <div class="maint-machine-tabs">
+          <button class="maint-machine-tab active" onclick="switchMaint('dtf',this)">🖨️ DTF</button>
+          <button class="maint-machine-tab" onclick="switchMaint('embroidery',this)">🧵 Embroidery</button>
+          <button class="maint-machine-tab" onclick="switchMaint('inverter',this)">🔋 Inverter</button>
+          <button class="maint-machine-tab" onclick="switchMaint('printer3d',this)">⬡ 3D Printer</button>
+        </div>
+        <div id="maintContent"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ════ AUDIO ════
+let audioCtx=null,beepInterval=null;
+function getACtx(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();return audioCtx;}
+function beepTone(f=880,d=120,v=0.4){
+  try{const c=getACtx(),o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);
+  o.type='sine';o.frequency.value=f;g.gain.setValueAtTime(v,c.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+d/1000);o.start(c.currentTime);o.stop(c.currentTime+d/1000);}catch(e){}
+}
+function beepReminder(){beepTone(880,120,0.4);setTimeout(()=>beepTone(880,120,0.4),200);setTimeout(()=>beepTone(1046,180,0.5),400);}
+function beepShort(){beepTone(660,80,0.3);}
+function startBeepLoop(){stopBeepLoop();beepReminder();beepInterval=setInterval(()=>beepReminder(),4000);}
+function stopBeepLoop(){if(beepInterval){clearInterval(beepInterval);beepInterval=null;}}
+
+// ════ SPEECH ════
+function speak(txt){
+  try{
+    window.speechSynthesis.cancel();
+    const go=()=>{
+      const vl=window.speechSynthesis.getVoices();
+      const v=vl.find(v=>v.name.includes('Zira')||v.name.includes('Samantha')||v.name.toLowerCase().includes('female'))||vl[0];
+      const u=new SpeechSynthesisUtterance(txt);u.lang='en-US';u.volume=1;u.rate=0.82;u.pitch=0.85;if(v)u.voice=v;
+      window.speechSynthesis.speak(u);
+    };
+    window.speechSynthesis.getVoices().length===0?window.speechSynthesis.onvoiceschanged=go:go();
+  }catch(e){}
+}
+
+// ════ NOTIFICATIONS ════
+let notifPerm=Notification.permission;
+function updateNotifBtn(){
+  const b=document.getElementById('notifBtn'),i=document.getElementById('notifIcon'),t=document.getElementById('notifBtnTxt');
+  if(notifPerm==='granted'){b.className='notif-btn granted';i.textContent='🔔';t.textContent='Notifications ON';}
+  else if(notifPerm==='denied'){b.className='notif-btn denied';i.textContent='🔕';t.textContent='Blocked';}
+  else{b.className='notif-btn';i.textContent='🔔';t.textContent='Enable Notifications';}
+}
+function requestNotifPermission(){
+  if(!('Notification'in window)){alert('Not supported');return;}
+  if(notifPerm==='granted'){sendNotif('🔔 Test','Working!','✅');return;}
+  Notification.requestPermission().then(p=>{notifPerm=p;updateNotifBtn();if(p==='granted')sendNotif('🎉 ColorCast','Enabled!','✅');});
+}
+function sendNotif(title,body,icon='🎨'){
+  if(notifPerm!=='granted')return;
+  try{const n=new Notification(title,{body,icon:'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>'+icon+'</text></svg>',tag:'colorcast',requireInteraction:true});
+  n.onclick=()=>{window.focus();n.close();};setTimeout(()=>n.close(),60000);}catch(e){}
+}
+
+// ════ FIREBASE ════
+firebase.initializeApp({
+  apiKey:"AIzaSyD3teBXo9Ajd3aijwfODKyKUEH8ujvx-MQ",
+  authDomain:"colorcast-reminder-6678c.firebaseapp.com",
+  databaseURL:"https://colorcast-reminder-6678c-default-rtdb.firebaseio.com",
+  projectId:"colorcast-reminder-6678c",
+  storageBucket:"colorcast-reminder-6678c.firebasestorage.app",
+  messagingSenderId:"324937632463",
+  appId:"1:324937632463:web:cb5bf0fd56fef08737c5ba"
+});
+const fsdb=firebase.firestore(),rtdb=firebase.database();
+rtdb.ref('.info/connected').on('value',s=>{
+  const on=s.val()===true;
+  document.getElementById('sbDot').className='sb-dot'+(on?' on':'');
+  document.getElementById('sbConnLbl').textContent=on?'Connected':'Offline';
+  // Popup buttons कधीही disable होणार नाहीत
+  document.querySelectorAll('.btn,.toggle input').forEach(b=>{
+    // popup-ack, popup-snooze, modal buttons — disable करू नका
+    if(b.closest('#popup')||b.closest('#addModal')||b.closest('#delModal')||b.closest('#maintModal'))return;
+    b.disabled=!on;
+  });
+  if(on)roomLog('Firebase connected','s');
+});
+
+// ════ REMINDERS ════
+// Office opens 9:30 AM — all times from 9:30 onwards
+const DEFAULT_REMINDERS=[
+  {id:'r1', h:9,  m:30, ampm:'AM', emoji:'🧹', text:'Basic cleaning check — workspace ready',           section:'MORNING SESSION',   freq:'daily'},
+  {id:'r2', h:9,  m:35, ampm:'AM', emoji:'🤖', text:'Machine room cleaning — dust-free confirm',         section:'MORNING SESSION',   freq:'daily'},
+  {id:'r3', h:9,  m:40, ampm:'AM', emoji:'🌡️', text:'Temperature & humidity check — log entry',         section:'MORNING SESSION',   freq:'daily'},
+  {id:'r4', h:9,  m:45, ampm:'AM', emoji:'⚙️', text:'Machine status check — printer, heat press',       section:'MORNING SESSION',   freq:'daily'},
+  {id:'r5', h:9,  m:50, ampm:'AM', emoji:'📦', text:'Orders check — new + pending',                      section:'MORNING SESSION',   freq:'daily'},
+  {id:'r6', h:9,  m:55, ampm:'AM', emoji:'🎞️', text:'Raw material check — film, ink, powder',           section:'MORNING SESSION',   freq:'daily'},
+  {id:'r7', h:10, m:0,  ampm:'AM', emoji:'📋', text:'Set day plan — priority tasks',                     section:'MORNING SESSION',   freq:'daily'},
+  {id:'r8', h:10, m:15, ampm:'AM', emoji:'🖨️', text:'Production start — priority jobs begin',           section:'PRODUCTION',        freq:'daily'},
+  {id:'r9', h:11, m:30, ampm:'AM', emoji:'🔍', text:'Mid-session check — quality review',                section:'PRODUCTION',        freq:'daily'},
+  {id:'r10',h:12, m:30, ampm:'PM', emoji:'💬', text:'Customer replies — WhatsApp / Instagram',           section:'PRODUCTION',        freq:'daily'},
+  {id:'r11',h:1,  m:30, ampm:'PM', emoji:'📌', text:'Afternoon prep — orders ready',                     section:'PRODUCTION',        freq:'daily'},
+  {id:'rb', h:2,  m:0,  ampm:'PM', emoji:'🍛', text:'Lunch break — rest time',                           section:'BREAK',             freq:'daily'},
+  {id:'r12',h:3,  m:0,  ampm:'PM', emoji:'⏳', text:'Resume pending work',                               section:'AFTERNOON',         freq:'daily'},
+  {id:'r13',h:4,  m:30, ampm:'PM', emoji:'🆕', text:'New orders check + status update',                  section:'AFTERNOON',         freq:'daily'},
+  {id:'r14',h:5,  m:0,  ampm:'PM', emoji:'🌐', text:'Website / product update if needed',                section:'AFTERNOON',         freq:'daily'},
+  {id:'r15',h:6,  m:0,  ampm:'PM', emoji:'♻️', text:'Material usage check — wastage control',            section:'AFTERNOON',         freq:'daily'},
+  {id:'r16',h:6,  m:30, ampm:'PM', emoji:'📝', text:'Day wrap-up — prepare pending list',                section:'AFTERNOON',         freq:'daily'},
+  {id:'r17',h:7,  m:30, ampm:'PM', emoji:'🧽', text:'Final cleaning — workspace + machines',             section:'CLOSING',           freq:'daily'},
+  {id:'r18',h:8,  m:0,  ampm:'PM', emoji:'💾', text:'Data backup — orders + designs',                    section:'CLOSING',           freq:'daily'},
+  {id:'r19',h:8,  m:15, ampm:'PM', emoji:'📡', text:'Dashboard check — ESP system status',               section:'CLOSING',           freq:'daily'},
+  {id:'r20',h:8,  m:30, ampm:'PM', emoji:'⚡', text:'Electricity usage check',                           section:'CLOSING',           freq:'daily'},
+  {id:'r21',h:8,  m:45, ampm:'PM', emoji:'📊', text:'End-of-day report — done / pending',                section:'CLOSING',           freq:'daily'},
+  {id:'r22',h:9,  m:0,  ampm:'PM', emoji:'🔒', text:'Close shop — day complete',                         section:'CLOSING',           freq:'daily'},
+];
+
+// ════ DEFAULT MAINTENANCE TASKS ════
+const DEFAULT_MAINT=[
+  // DTF
+  {id:'dtf-d1',machine:'dtf',freq:'daily',   emoji:'🔍',text:'Nozzle check',                    h:9, m:30,ampm:'AM'},
+  {id:'dtf-d2',machine:'dtf',freq:'daily',   emoji:'🖋️',text:'Ink level check',                h:9, m:35,ampm:'AM'},
+  {id:'dtf-d3',machine:'dtf',freq:'daily',   emoji:'🌡️',text:'Room temperature & humidity check',h:9,m:40,ampm:'AM'},
+  {id:'dtf-w1',machine:'dtf',freq:'weekly',  emoji:'🧴',text:'Capping station wash',             h:10,m:0, ampm:'AM'},
+  {id:'dtf-w2',machine:'dtf',freq:'weekly',  emoji:'🗑️',text:'Waste ink tank & tube check',     h:10,m:30,ampm:'AM'},
+  {id:'dtf-w3',machine:'dtf',freq:'weekly',  emoji:'🪟',text:'Encoder strip clean',              h:11,m:0, ampm:'AM'},
+  {id:'dtf-w4',machine:'dtf',freq:'weekly',  emoji:'🛢️',text:'Rail lubrication',                h:11,m:30,ampm:'AM'},
+  {id:'dtf-m1',machine:'dtf',freq:'monthly', emoji:'🔧',text:'Damper check',                    h:10,m:0, ampm:'AM'},
+  {id:'dtf-m2',machine:'dtf',freq:'monthly', emoji:'🚰',text:'Ink lines clog check',            h:10,m:30,ampm:'AM'},
+  {id:'dtf-q1',machine:'dtf',freq:'quarterly',emoji:'🔄',text:'Dampers replace',               h:10,m:0, ampm:'AM'},
+  {id:'dtf-q2',machine:'dtf',freq:'quarterly',emoji:'🧹',text:'Wiper blade replace',           h:10,m:30,ampm:'AM'},
+  {id:'dtf-q3',machine:'dtf',freq:'quarterly',emoji:'🧽',text:'Capping sponge replace',        h:11,m:0, ampm:'AM'},
+  // Embroidery
+  {id:'emb-d1',machine:'embroidery',freq:'daily',  emoji:'🪡',text:'Needle condition check',    h:9, m:30,ampm:'AM'},
+  {id:'emb-d2',machine:'embroidery',freq:'daily',  emoji:'⚙️',text:'Thread tension set',        h:9, m:35,ampm:'AM'},
+  {id:'emb-d3',machine:'embroidery',freq:'daily',  emoji:'👂',text:'Noise check',                h:9, m:40,ampm:'AM'},
+  {id:'emb-d4',machine:'embroidery',freq:'daily',  emoji:'🧹',text:'Lint remove',               h:9, m:45,ampm:'AM'},
+  {id:'emb-w1',machine:'embroidery',freq:'weekly', emoji:'🧵',text:'Thread path clean',          h:10,m:0, ampm:'AM'},
+  {id:'emb-w2',machine:'embroidery',freq:'weekly', emoji:'💨',text:'Motor fan vents clean',      h:10,m:20,ampm:'AM'},
+  {id:'emb-w3',machine:'embroidery',freq:'weekly', emoji:'⚙️',text:'Tension discs clean',       h:10,m:40,ampm:'AM'},
+  {id:'emb-w4',machine:'embroidery',freq:'weekly', emoji:'🔗',text:'Belt condition check',      h:11,m:0, ampm:'AM'},
+  {id:'emb-m1',machine:'embroidery',freq:'monthly',emoji:'🔩',text:'Bobbin spring weak check',  h:10,m:0, ampm:'AM'},
+  {id:'emb-m2',machine:'embroidery',freq:'monthly',emoji:'🪡',text:'Needle change',             h:10,m:20,ampm:'AM'},
+  {id:'emb-m3',machine:'embroidery',freq:'monthly',emoji:'🛢️',text:'Full oiling',              h:10,m:40,ampm:'AM'},
+  {id:'emb-m4',machine:'embroidery',freq:'monthly',emoji:'🔍',text:'Sensor clean',              h:11,m:0, ampm:'AM'},
+  // Inverter
+  {id:'inv-w1',machine:'inverter',freq:'weekly', emoji:'💧',text:'Water level check',            h:11,m:0, ampm:'AM'},
+  {id:'inv-w2',machine:'inverter',freq:'weekly', emoji:'🔩',text:'Terminal tight check',         h:11,m:10,ampm:'AM'},
+  {id:'inv-w3',machine:'inverter',freq:'weekly', emoji:'📊',text:'Display check (load, battery)',h:11,m:20,ampm:'AM'},
+  {id:'inv-w4',machine:'inverter',freq:'weekly', emoji:'👂',text:'Noise check',                  h:11,m:30,ampm:'AM'},
+  {id:'inv-m1',machine:'inverter',freq:'monthly',emoji:'🔋',text:'Battery voltage check',        h:11,m:0, ampm:'AM'},
+  {id:'inv-m2',machine:'inverter',freq:'monthly',emoji:'🌡️',text:'Battery heating check',       h:11,m:20,ampm:'AM'},
+  // 3D Printer
+  {id:'3d-d1',machine:'printer3d',freq:'daily',  emoji:'🛏️',text:'Bed clean',                   h:9, m:30,ampm:'AM'},
+  {id:'3d-d2',machine:'printer3d',freq:'daily',  emoji:'🔍',text:'Nozzle clog check',           h:9, m:35,ampm:'AM'},
+  {id:'3d-d3',machine:'printer3d',freq:'daily',  emoji:'🌵',text:'Filament dry check',           h:9, m:40,ampm:'AM'},
+  {id:'3d-d4',machine:'printer3d',freq:'daily',  emoji:'🧹',text:'Nozzle tip clean',            h:9, m:45,ampm:'AM'},
+  {id:'3d-w1',machine:'printer3d',freq:'weekly', emoji:'⚙️',text:'Extruder gear clean',         h:11,m:0, ampm:'AM'},
+  {id:'3d-w2',machine:'printer3d',freq:'weekly', emoji:'💨',text:'Fans (hotend+cooling) clean',  h:11,m:15,ampm:'AM'},
+  {id:'3d-w3',machine:'printer3d',freq:'weekly', emoji:'🔩',text:'Z-axis lead screw clean',     h:11,m:30,ampm:'AM'},
+  {id:'3d-w4',machine:'printer3d',freq:'weekly', emoji:'⚡',text:'Belt tension check',           h:11,m:45,ampm:'AM'},
+  {id:'3d-m1',machine:'printer3d',freq:'monthly',emoji:'🔧',text:'PTFE tube condition check',   h:11,m:0, ampm:'AM'},
+  {id:'3d-m2',machine:'printer3d',freq:'monthly',emoji:'📐',text:'E-step calibration',           h:11,m:20,ampm:'AM'},
+  {id:'3d-m3',machine:'printer3d',freq:'monthly',emoji:'📊',text:'Flow rate tuning',            h:11,m:40,ampm:'AM'},
+  {id:'3d-m4',machine:'printer3d',freq:'monthly',emoji:'🌡️',text:'Temperature tuning',          h:12,m:0, ampm:'PM'},
+];
+
+const EMOJIS=['🧹','🤖','🌡️','⚙️','📦','🎞️','📋','🖨️','🔍','💬','📌','🍛','⏳','🆕','🌐','♻️','📝','🧽','💾','📡','⚡','📊','🔒','✅','⭐','💰','👥','🛠️','🗃️','💳','🚀','🔧','🪡','🌵','🛏️','🔋','💧','🔩','🪟','🛢️','🔗','⬡','🔄','🚰','🛢️'];
+const FREQ_LABELS={daily:'Daily',weekly:'Weekly',monthly:'Monthly',quarterly:'3-6 Mo'};
+const FREQ_COLORS={daily:'freq-daily',weekly:'freq-weekly',monthly:'freq-monthly',quarterly:'freq-quarterly'};
+const MACHINE_LABELS={dtf:'🖨️ DTF',embroidery:'🧵 Embr.',inverter:'🔋 Inv.',printer3d:'⬡ 3D'};
+
+let allReminders=[...DEFAULT_REMINDERS];
+let ackedSet=new Set(),notes=[],customReminders=[],currentId=null,snoozeMap={};
+let maintTasks=[...DEFAULT_MAINT],customMaintTasks=[],maintChecks={};
+let selectedEmoji='📋',maintSelectedEmoji='🔧';
+let editingId=null,deleteTargetId=null,deleteType='reminder';
+let currentMaintMachine='dtf';
+const DAYS=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+function toMin24(h,m,ampm){let h24=h;if(ampm==='AM'&&h===12)h24=0;if(ampm==='PM'&&h!==12)h24=h+12;return h24*60+m;}
+function fmt12(h,m,ampm){return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+' '+ampm;}
+function nowMin(){const n=new Date();return n.getHours()*60+n.getMinutes();}
+function todayKey(){return new Date().toISOString().split('T')[0];}
+function tsNow(){return new Date().toTimeString().split(' ')[0];}
+function dateNow(){return new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});}
+
+function tick(){
+  const n=new Date(),h=n.getHours(),m=n.getMinutes(),ap=h>=12?'PM':'AM';let hh=h%12;if(!hh)hh=12;
+  document.getElementById('topTime').textContent=String(hh).padStart(2,'0')+':'+String(m).padStart(2,'0')+' '+ap;
+  document.getElementById('topDate').textContent=DAYS[n.getDay()]+', '+n.getDate()+' '+MONTHS[n.getMonth()]+' '+n.getFullYear();
+}
+
+// ── FIRESTORE ──
+function loadFirestore(){
+  fsdb.collection('colorcast').doc(todayKey()).onSnapshot(snap=>{
+    if(snap.exists){
+      const d=snap.data();
+      ackedSet=new Set(d.acked||[]);
+      notes=d.notes||[];
+      customReminders=d.customReminders||[];
+      customMaintTasks=d.customMaintTasks||[];
+      maintChecks=d.maintChecks||{};
+      rebuildReminders();
+      rebuildMaint();
+      renderAll();renderNotes();renderMaintContent();renderHomeMaint();
+    }else{
+      rebuildReminders();rebuildMaint();renderAll();renderMaintContent();renderHomeMaint();
+    }
+  });
+}
+
+function rebuildReminders(){
+  const editMap={};customReminders.forEach(r=>{editMap[r.id]=r;});
+  const merged=DEFAULT_REMINDERS.map(r=>editMap[r.id]?editMap[r.id]:r);
+  const pure=customReminders.filter(r=>!DEFAULT_REMINDERS.some(d=>d.id===r.id));
+  allReminders=[...merged,...pure];
+  allReminders.sort((a,b)=>toMin24(a.h,a.m,a.ampm)-toMin24(b.h,b.m,b.ampm));
+}
+
+function rebuildMaint(){
+  const editMap={};customMaintTasks.forEach(r=>{editMap[r.id]=r;});
+  const merged=DEFAULT_MAINT.map(r=>editMap[r.id]?editMap[r.id]:r);
+  const pure=customMaintTasks.filter(r=>!DEFAULT_MAINT.some(d=>d.id===r.id));
+  maintTasks=[...merged,...pure];
+  maintTasks.sort((a,b)=>toMin24(a.h,a.m,a.ampm)-toMin24(b.h,b.m,b.ampm));
+}
+
+function saveFS(){
+  fsdb.collection('colorcast').doc(todayKey()).set({
+    acked:[...ackedSet],notes,customReminders,customMaintTasks,maintChecks,ts:new Date().toISOString()
+  },{merge:true});
+}
+
+// ── CIRCLES ──
+function setCircle(pct){
+  const c1=2*Math.PI*45;
+  document.getElementById('circFill').style.strokeDashoffset=c1-(pct/100)*c1;
+  document.getElementById('circFill').style.strokeDasharray=c1;
+  document.getElementById('circPct').textContent=pct+'%';
+  const c2=2*Math.PI*33;
+  document.getElementById('hCircFill').style.strokeDashoffset=c2-(pct/100)*c2;
+  document.getElementById('hCircFill').style.strokeDasharray=c2;
+  document.getElementById('hCircPct').textContent=pct+'%';
+}
+
+function setMaintCircle(pct){
+  const c=2*Math.PI*28;
+  document.getElementById('maintCircFill').style.strokeDashoffset=c-(pct/100)*c;
+  document.getElementById('maintCircFill').style.strokeDasharray=c;
+  document.getElementById('maintCircPct').textContent=pct+'%';
+}
+
+// ── RENDER ALL ──
+function renderAll(){
+  const now=nowMin(),total=allReminders.length;
+  const done=allReminders.filter(r=>ackedSet.has(r.id)).length;
+  const pct=Math.round((done/total)*100);
+  document.getElementById('sComp').textContent=done;
+  document.getElementById('sRem').textContent=total-done;
+  document.getElementById('hSComp').textContent=done;
+  document.getElementById('hSRem').textContent=total-done;
+  document.getElementById('sbBadge').textContent=total-done;
+  setCircle(pct);
+
+  const upcoming=allReminders.filter(r=>!ackedSet.has(r.id)&&!snoozeMap[r.id]&&toMin24(r.h,r.m,r.ampm)>now);
+  document.getElementById('sNext').textContent=upcoming.length?(toMin24(upcoming[0].h,upcoming[0].m,upcoming[0].ampm)-now)+' min':'--';
+
+  const active=allReminders.find(r=>{
+    const d=toMin24(r.h,r.m,r.ampm)-now;
+    return !ackedSet.has(r.id)&&!snoozeMap[r.id]&&d<=0&&d>=-1;
+  });
+
+  if(active){
+    currentId=active.id;
+    document.getElementById('noActive').classList.add('hidden');
+    document.getElementById('activeRem').classList.remove('hidden');
+    document.getElementById('aTime').textContent=fmt12(active.h,active.m,active.ampm);
+    document.getElementById('aEmoji').textContent=active.emoji;
+    document.getElementById('aText').textContent=active.text;
+    document.getElementById('aSec').textContent=active.section;
+    document.getElementById('hNoActive').classList.add('hidden');
+    document.getElementById('hActiveRem').classList.remove('hidden');
+    document.getElementById('hATime').textContent=fmt12(active.h,active.m,active.ampm);
+    document.getElementById('hAEmoji').textContent=active.emoji;
+    document.getElementById('hAText').textContent=active.text;
+    document.getElementById('hASec').textContent=active.section;
+    if(!window._shown)window._shown={};
+    if(!window._shown[active.id]){
+      window._shown[active.id]=true;
+      speak('Reminder! '+active.section+'. '+active.text);
+      setTimeout(()=>startBeepLoop(),3500);
+      sendNotif(active.emoji+' '+active.section,active.text+' — '+fmt12(active.h,active.m,active.ampm),active.emoji);
+      showPopup(active);
+    }
+  }else{
+    currentId=null;
+    document.getElementById('noActive').classList.remove('hidden');
+    document.getElementById('activeRem').classList.add('hidden');
+    document.getElementById('hNoActive').classList.remove('hidden');
+    document.getElementById('hActiveRem').classList.add('hidden');
+  }
+
+  const upList=allReminders.filter(r=>!ackedSet.has(r.id)&&toMin24(r.h,r.m,r.ampm)>=now).slice(0,5);
+  document.getElementById('upCount').textContent=upList.length+' pending';
+  const ul=document.getElementById('upcomingList');ul.innerHTML='';
+  upList.forEach((r,i)=>{
+    const diff=toMin24(r.h,r.m,r.ampm)-now;
+    const d=document.createElement('div');
+    d.className='rem-item'+(i===0?' active-now':'');d.style.marginBottom='3px';
+    d.innerHTML=`<span style="font-size:12px;">${r.emoji}</span>
+      <div style="flex:1;min-width:0;"><div style="font-size:10px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.text}</div>
+      <div style="font-size:9px;color:var(--text3);">${fmt12(r.h,r.m,r.ampm)}</div></div>
+      <span style="font-size:9px;color:${diff<=0?'var(--green)':'var(--text3)'};">${diff<=0?'Now':diff+'m'}</span>`;
+    ul.appendChild(d);
+  });
+
+  const list=document.getElementById('reminderList');list.innerHTML='';
+  allReminders.forEach(r=>{
+    const isDone=ackedSet.has(r.id);
+    const isAct=Math.abs(toMin24(r.h,r.m,r.ampm)-nowMin())<=1&&!isDone;
+    const freq=r.freq||'daily';
+    const item=document.createElement('div');
+    item.className='rem-item'+(isDone?' done':'')+(isAct?' active-now':'');
+    item.innerHTML=`
+      <div class="rem-check${isDone?' checked':''}" onclick="toggleAck('${r.id}')"></div>
+      <span class="rem-emoji">${r.emoji}</span>
+      <div class="rem-info"><div class="rem-text">${r.text}</div><div class="rem-meta">${r.section}</div></div>
+      <span class="rem-freq ${FREQ_COLORS[freq]}">${FREQ_LABELS[freq]}</span>
+      <span class="rem-time">${fmt12(r.h,r.m,r.ampm)}</span>
+      <div class="rem-actions">
+        <button class="rem-btn" onclick="openEditModal('${r.id}')">✏️</button>
+        <button class="rem-btn del" onclick="openDeleteModal('${r.id}','reminder')">🗑</button>
+      </div>`;
+    list.appendChild(item);
+  });
+}
+
+function showPopup(r){
+  document.getElementById('pEmoji').textContent=r.emoji;
+  document.getElementById('pTime').textContent=fmt12(r.h,r.m,r.ampm);
+  document.getElementById('pTask').textContent=r.text;
+  document.getElementById('pSec').textContent=r.section;
+  document.getElementById('beepStatus').classList.remove('hidden');
+  document.getElementById('popup').dataset.type='reminder';
+  document.getElementById('popup').classList.add('show');
+}
+
+function _doAckReminder(){
+  if(!currentId)return;
+  ackedSet.add(currentId);saveFS();
+  document.getElementById('popup').classList.remove('show');
+  stopBeepLoop();window.speechSynthesis&&window.speechSynthesis.cancel();
+  document.getElementById('beepStatus').classList.add('hidden');
+  beepShort();currentId=null;renderAll();
+}
+
+function _doSnoozeReminder(){
+  if(!currentId)return;
+  const id=currentId;snoozeMap[id]=true;
+  document.getElementById('popup').classList.remove('show');
+  stopBeepLoop();window.speechSynthesis&&window.speechSynthesis.cancel();
+  currentId=null;
+  setTimeout(()=>{delete snoozeMap[id];if(window._shown)delete window._shown[id];renderAll();},5*60*1000);
+}
+
+function toggleAck(id){if(ackedSet.has(id))ackedSet.delete(id);else ackedSet.add(id);saveFS();renderAll();}
+
+// ── REMINDER MODAL ──
+function buildEGrid(sel,containerId){
+  const g=document.getElementById(containerId);g.innerHTML='';
+  EMOJIS.forEach(e=>{
+    const b=document.createElement('button');b.className='emoji-btn'+(e===sel?' sel':'');b.textContent=e;
+    b.onclick=()=>{
+      if(containerId==='emojiGrid')selectedEmoji=e;else maintSelectedEmoji=e;
+      document.querySelectorAll('#'+containerId+' .emoji-btn').forEach(x=>x.classList.remove('sel'));b.classList.add('sel');
+    };g.appendChild(b);
+  });
+}
+
+function openModal(){
+  editingId=null;
+  document.getElementById('modalTitleTxt').textContent='Add Reminder';
+  document.getElementById('modalSaveBtn').textContent='+ Add';
+  ['newText','newSection'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('newHour').value='';document.getElementById('newMin').value='';
+  document.getElementById('newAMPM').value='AM';document.getElementById('newFreq').value='daily';
+  selectedEmoji='📋';buildEGrid(selectedEmoji,'emojiGrid');
+  document.getElementById('addModal').classList.add('show');
+}
+
+function openEditModal(id){
+  const r=allReminders.find(x=>x.id===id);if(!r)return;
+  editingId=id;
+  document.getElementById('modalTitleTxt').textContent='Edit Reminder';
+  document.getElementById('modalSaveBtn').textContent='✓ Save';
+  document.getElementById('newText').value=r.text;
+  document.getElementById('newHour').value=r.h;
+  document.getElementById('newMin').value=r.m;
+  document.getElementById('newAMPM').value=r.ampm;
+  document.getElementById('newSection').value=r.section;
+  document.getElementById('newFreq').value=r.freq||'daily';
+  selectedEmoji=r.emoji;buildEGrid(r.emoji,'emojiGrid');
+  document.getElementById('addModal').classList.add('show');
+}
+
+function closeModal(){document.getElementById('addModal').classList.remove('show');editingId=null;}
+
+function saveReminder(){
+  const text=document.getElementById('newText').value.trim();
+  const h=parseInt(document.getElementById('newHour').value);
+  const m=parseInt(document.getElementById('newMin').value)||0;
+  const ampm=document.getElementById('newAMPM').value;
+  const section=document.getElementById('newSection').value.trim()||'CUSTOM';
+  const freq=document.getElementById('newFreq').value||'daily';
+  if(!text||!h||h<1||h>12){alert('Task name and hour (1-12) required');return;}
+  const updated={id:editingId||('c'+Date.now()),h,m,ampm,emoji:selectedEmoji,text,section,freq};
+  if(editingId){const ci=customReminders.findIndex(c=>c.id===editingId);ci>=0?customReminders[ci]=updated:customReminders.push(updated);}
+  else customReminders.push(updated);
+  saveFS();closeModal();rebuildReminders();renderAll();
+}
+
+// ── MAINTENANCE ──
+function renderMaintContent(){
+  const machine=currentMaintMachine;
+  const tasks=maintTasks.filter(t=>t.machine===machine);
+  const freqs=['daily','weekly','monthly','quarterly'];
+  const freqTitles={daily:'📅 Daily',weekly:'📆 Weekly (Sunday)',monthly:'🗓️ Monthly',quarterly:'⏳ Every 3-6 Months'};
+  let html='';
+  freqs.forEach(freq=>{
+    const ft=tasks.filter(t=>t.freq===freq);
+    if(ft.length===0)return;
+    html+=`<div class="maint-freq-title ${freq}"><span>${freqTitles[freq]}</span></div>`;
+    ft.forEach(t=>{
+      const checked=!!maintChecks[t.id];
+      const activeToday=isMaintTaskActiveToday(t);
+      const notToday=!activeToday?' style="opacity:0.35;"':'';
+      const todayTag=activeToday?'':' <span style="font-size:9px;color:var(--text3);margin-left:4px;">(Not today)</span>';
+      html+=`<div class="maint-item${checked?' done':''}" id="mi-${t.id}"${notToday}>
+        <div class="maint-check${checked?' checked':''}" onclick="${activeToday?`toggleMaint('${t.id}')`:''}"></div>
+        <span style="font-size:13px;flex-shrink:0;">${t.emoji}</span>
+        <span class="maint-text">${t.text}${todayTag}</span>
+        <span class="maint-time">${fmt12(t.h,t.m,t.ampm)}</span>
+        <button class="maint-del" onclick="openDeleteModal('${t.id}','maint')" title="Delete">🗑</button>
+      </div>`;
+    });
+  });
+  document.getElementById('maintContent').innerHTML=html||'<div style="color:var(--text3);font-size:11px;padding:12px 0;">No tasks for this machine.</div>';
+  updateMaintStats();
+}
+
+
+// ── MAINTENANCE DAY CHECK ──
+// Sunday=0, Monday=1, ... Saturday=6
+function isMaintTaskActiveToday(t){
+  const day=new Date().getDay(); // 0=Sunday
+  const date=new Date().getDate();
+  const freq=t.freq||'daily';
+
+  if(freq==='daily'){
+    // Daily → every day EXCEPT Sunday (weekly off)
+    return day!==0;
+  }
+  if(freq==='weekly'){
+    // Weekly → only Sunday
+    return day===0;
+  }
+  if(freq==='monthly'){
+    // Monthly → only Sunday (1st/2nd/3rd/4th based on machine)
+    if(day!==0)return false;
+    // Which Sunday of the month?
+    const sundayNum=Math.ceil(date/7);
+    const machine=t.machine||'';
+    if(machine==='dtf')       return sundayNum===1; // 1st Sunday
+    if(machine==='embroidery') return sundayNum===2; // 2nd Sunday
+    if(machine==='inverter')   return sundayNum===3; // 3rd Sunday
+    if(machine==='printer3d')  return sundayNum===3; // 3rd Sunday
+    return sundayNum===1; // default 1st Sunday
+  }
+  if(freq==='quarterly'){
+    // Quarterly → show every 1st Sunday only as reminder
+    if(day!==0)return false;
+    const sundayNum=Math.ceil(date/7);
+    return sundayNum===1;
+  }
+  return true;
+}
+
+function renderHomeMaint(){
+  const now=nowMin();
+  // Filter: only today's applicable tasks, not yet checked
+  const upcoming=maintTasks
+    .filter(t=>isMaintTaskActiveToday(t)&&!maintChecks[t.id]&&toMin24(t.h,t.m,t.ampm)>=now-1)
+    .slice(0,6);
+  const el=document.getElementById('homeMaintList');
+  if(upcoming.length===0){
+    el.innerHTML='<div style="color:var(--text3);font-size:11px;padding:6px 0;">All done for today! 🎉</div>';
+    updateMaintStats();return;
+  }
+  el.innerHTML=upcoming.map(t=>{
+    const diff=toMin24(t.h,t.m,t.ampm)-now;
+    const isAct=diff<=0&&diff>=-1;
+    return `<div class="home-maint-item ${t.freq}${isAct?' active-m':''}">
+      <span class="hm-machine">${MACHINE_LABELS[t.machine]||t.machine}</span>
+      <span class="hm-text">${t.emoji} ${t.text}</span>
+      <span class="hm-time">${fmt12(t.h,t.m,t.ampm)}</span>
+      <span class="hm-eta">${isAct?'Now':diff>0?diff+'m':''}</span>
+    </div>`;
+  }).join('');
+  document.getElementById('homeMaintBadge').textContent=upcoming.length+' pending';
+  updateMaintStats();
+}
+
+function updateMaintStats(){
+  // Only count today's applicable tasks
+  const todayTasks=maintTasks.filter(t=>isMaintTaskActiveToday(t));
+  const total=todayTasks.length;
+  const done=todayTasks.filter(t=>maintChecks[t.id]).length;
+  const pct=total>0?Math.round((done/total)*100):0;
+  setMaintCircle(pct);
+  document.getElementById('maintDoneCount').textContent=done;
+  document.getElementById('maintPendCount').textContent=total-done;
+  document.getElementById('maintBadge').textContent=(total-done)+' pending';
+}
+
+function toggleMaint(id){
+  maintChecks[id]=!maintChecks[id];
+  saveFS();
+  const item=document.getElementById('mi-'+id);
+  if(item){
+    item.classList.toggle('done',maintChecks[id]);
+    const chk=item.querySelector('.maint-check');
+    if(chk)chk.classList.toggle('checked',maintChecks[id]);
+  }
+  updateMaintStats();renderHomeMaint();
+}
+
+function clearMaintChecks(){
+  if(!confirm('Reset all maintenance checks?'))return;
+  maintChecks={};saveFS();
+  document.querySelectorAll('.maint-item').forEach(el=>el.classList.remove('done'));
+  document.querySelectorAll('.maint-check').forEach(el=>el.classList.remove('checked'));
+  updateMaintStats();renderHomeMaint();
+}
+
+// ── MAINTENANCE MODAL ──
+function openMaintModal(){
+  maintSelectedEmoji='🔧';
+  buildEGrid(maintSelectedEmoji,'maintEmojiGrid');
+  document.getElementById('mNewText').value='';
+  document.getElementById('mNewHour').value='';
+  document.getElementById('mNewMin').value='';
+  document.getElementById('mNewMachine').value=currentMaintMachine;
+  document.getElementById('mNewFreq').value='daily';
+  document.getElementById('mNewAMPM').value='AM';
+  document.getElementById('maintModal').classList.add('show');
+}
+function closeMaintModal(){document.getElementById('maintModal').classList.remove('show');}
+
+function saveMaintTask(){
+  const text=document.getElementById('mNewText').value.trim();
+  const h=parseInt(document.getElementById('mNewHour').value);
+  const m=parseInt(document.getElementById('mNewMin').value)||0;
+  const ampm=document.getElementById('mNewAMPM').value;
+  const machine=document.getElementById('mNewMachine').value;
+  const freq=document.getElementById('mNewFreq').value;
+  if(!text||!h||h<1||h>12){alert('Task name and hour required');return;}
+  const newT={id:'cm'+Date.now(),machine,freq,emoji:maintSelectedEmoji,text,h,m,ampm};
+  customMaintTasks.push(newT);
+  saveFS();closeMaintModal();rebuildMaint();renderMaintContent();renderHomeMaint();
+}
+
+// ── DELETE ──
+function openDeleteModal(id,type){
+  deleteTargetId=id;deleteType=type;
+  const arr=type==='maint'?maintTasks:allReminders;
+  const r=arr.find(x=>x.id===id);if(!r)return;
+  document.getElementById('delModalText').textContent='"'+(r.emoji||'')+(r.text||r.text)+'" delete karayche?';
+  document.getElementById('delModal').classList.add('show');
+}
+
+function confirmDelete(){
+  if(!deleteTargetId)return;
+  const id=deleteTargetId;
+  if(deleteType==='maint'){
+    customMaintTasks=customMaintTasks.filter(t=>t.id!==id);
+    const di=DEFAULT_MAINT.findIndex(d=>d.id===id);
+    if(di>=0)DEFAULT_MAINT.splice(di,1);
+    delete maintChecks[id];
+    saveFS();rebuildMaint();renderMaintContent();renderHomeMaint();
+  } else {
+    customReminders=customReminders.filter(r=>r.id!==id);
+    const di=DEFAULT_REMINDERS.findIndex(d=>d.id===id);
+    if(di>=0)DEFAULT_REMINDERS.splice(di,1);
+    ackedSet.delete(id);
+    saveFS();rebuildReminders();renderAll();
+  }
+  document.getElementById('delModal').classList.remove('show');
+  deleteTargetId=null;
+}
+
+function addNote(){
+  const inp=document.getElementById('noteInp'),t=inp.value.trim();if(!t)return;
+  const n=new Date();let hh=n.getHours()%12;if(!hh)hh=12;
+  const ts=String(hh).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0')+' '+(n.getHours()>=12?'PM':'AM');
+  notes.unshift({t,ts,id:Date.now()});inp.value='';saveFS();renderNotes();
+}
+function renderNotes(){
+  document.getElementById('noteList').innerHTML=notes.slice(0,8).map(n=>`<div class="note-entry"><span class="note-t">${n.ts}</span><span>${n.t}</span></div>`).join('');
+}
+
+// ── MACHINE ROOM ──
+const P={cd:'/MachineRoom/control/door',cl:'/MachineRoom/control/light',ca:'/MachineRoom/control/ac',
+  sd:'/MachineRoom/status/door',sl:'/MachineRoom/status/light',sa:'/MachineRoom/status/ac',
+  tmp:'/MachineRoom/sensors/temperature',hum:'/MachineRoom/sensors/humidity'};
+
+function roomLog(msg,type='i'){
+  const l=document.getElementById('logList');
+  const e=document.createElement('div');e.className='log-entry '+type;
+  e.innerHTML=`<span class="log-ts">${tsNow()}</span><div class="log-dot"></div><span class="log-msg">${msg}</span>`;
+  l.insertBefore(e,l.firstChild);if(l.children.length>20)l.removeChild(l.lastChild);
+}
+
+function sBadge(src){
+  if(!src||src==='--')return '<span style="color:var(--text3);font-size:9px;">--</span>';
+  const s=src.toLowerCase();
+  if(s==='rfid')return '<span class="hist-badge src-rfid">📡 RFID</span>';
+  if(s==='button')return '<span class="hist-badge src-button">🔘 Button</span>';
+  if(s==='dashboard')return '<span class="hist-badge src-dashboard">💻 Dashboard</span>';
+  if(s==='autolock')return '<span class="hist-badge src-autolock">⏱ AutoLock</span>';
+  return `<span class="hist-badge src-default">${src}</span>`;
+}
+
+function updDoor(un){
+  document.getElementById('doorPill').className='pill '+(un?'unlocked':'locked');
+  document.getElementById('doorPillTxt').textContent=un?'Unlocked':'Locked';
+  document.getElementById('doorCard').className='device-card door-full'+(un?' on':'');
+  const hd=document.getElementById('hDoorVal');hd.textContent=un?'Unlocked':'Locked';hd.className='hs-val '+(un?'unlocked':'locked');
+}
+function updLight(on){
+  document.getElementById('lightPill').className='pill '+(on?'on':'off');
+  document.getElementById('lightTxt').textContent=on?'On':'Off';
+  document.getElementById('lightCard').className='device-card'+(on?' on':'');
+  document.getElementById('lightTog').checked=on;
+  const hl=document.getElementById('hLightVal');hl.textContent=on?'On':'Off';hl.className='hs-val '+(on?'on':'off');
+}
+function updAC(on){
+  document.getElementById('acPill').className='pill '+(on?'on':'off');
+  document.getElementById('acTxt').textContent=on?'On':'Off';
+  document.getElementById('acCard').className='device-card'+(on?' on':'');
+  document.getElementById('acTog').checked=on;
+  const ha=document.getElementById('hACVal');ha.textContent=on?'On':'Off';ha.className='hs-val '+(on?'on':'off');
+}
+
+rtdb.ref(P.sd).on('value',s=>{if(s.val()!==null){updDoor(s.val());roomLog('Door: '+(s.val()?'Unlocked':'Locked'),s.val()?'s':'w');}});
+rtdb.ref(P.sl).on('value',s=>{if(s.val()!==null){updLight(s.val());roomLog('Light: '+(s.val()?'ON':'OFF'),s.val()?'s':'i');}});
+rtdb.ref(P.sa).on('value',s=>{if(s.val()!==null){updAC(s.val());roomLog('AC: '+(s.val()?'ON':'OFF'),s.val()?'s':'i');}});
+rtdb.ref(P.tmp).on('value',s=>{
+  if(s.val()!==null){
+    const v=parseFloat(s.val()).toFixed(1)+'°C';
+    const el1=document.getElementById('tempVal');if(el1)el1.textContent=v;
+    const el2=document.getElementById('hTempVal');if(el2)el2.textContent=v;
+    const lu=document.getElementById('lastUpdate');if(lu)lu.textContent=tsNow();
+    const hlu=document.getElementById('hLastUpdate');if(hlu)hlu.textContent=tsNow();
+  }
+});
+rtdb.ref(P.hum).on('value',s=>{
+  if(s.val()!==null){
+    const v=parseFloat(s.val()).toFixed(1)+'%';
+    const el1=document.getElementById('humVal');if(el1)el1.textContent=v;
+    const el2=document.getElementById('hHumVal');if(el2)el2.textContent=v;
+  }
+});
+
+let lastDA='',lastDS='',lastDSaveTs=0;
+rtdb.ref('/MachineRoom/door').on('value',s=>{
+  if(!s.val())return;
+  const d=s.val();
+  if(!d.lastAction||d.lastAction==='--')return;
+  document.getElementById('lastAction').textContent=d.lastAction||'--';
+  document.getElementById('lastAction').style.color=d.lastAction==='unlock'?'var(--green)':'var(--yellow)';
+  document.getElementById('lastSourceBadge').innerHTML=sBadge(d.lastSource);
+  document.getElementById('lastDoorTime').textContent=d.lastTime||'--';
+  const now=Date.now();
+  if((d.lastAction!==lastDA||d.lastSource!==lastDS)&&(now-lastDSaveTs)>8000){
+    lastDA=d.lastAction;lastDS=d.lastSource;lastDSaveTs=now;
+    fsdb.collection('doorHistory').add({action:d.lastAction,source:d.lastSource||'Unknown',time:d.lastTime||tsNow(),date:dateNow(),ts:now});
+  }
+});
+
+function ctrlDoor(u){rtdb.ref(P.cd).set(u).then(()=>roomLog('Door cmd: '+(u?'Unlock':'Lock'),u?'s':'w')).catch(e=>roomLog('Err: '+e.message,'d'));}
+function ctrlLight(on){rtdb.ref(P.cl).set(on).then(()=>roomLog('Light cmd: '+(on?'ON':'OFF'),on?'s':'i')).catch(e=>roomLog('Err: '+e.message,'d'));}
+function ctrlAC(on){rtdb.ref(P.ca).set(on).then(()=>roomLog('AC cmd: '+(on?'ON':'OFF'),on?'s':'i')).catch(e=>roomLog('Err: '+e.message,'d'));}
+
+function loadHistory(){
+  fsdb.collection('doorHistory').orderBy('ts','desc').limit(100).onSnapshot(snap=>{
+    const l=document.getElementById('histList');
+    if(snap.empty){l.innerHTML='<div class="hist-empty">No history yet. Unlock the door to start recording.</div>';return;}
+    l.innerHTML='';
+    snap.forEach(doc=>{
+      const d=doc.data();
+      const i=document.createElement('div');i.className='hist-item '+(d.action||'');
+      i.innerHTML=`<div class="hist-icon">${d.action==='unlock'?'🔓':'🔒'}</div>
+        <div class="hist-info"><div class="hist-action ${d.action}">${d.action==='unlock'?'Door Unlocked':'Door Locked'}</div>
+        <div style="margin-top:2px;">${sBadge(d.source)}</div></div>
+        <div><div class="hist-time">${d.time||'--'}</div><div class="hist-date">${d.date||'--'}</div></div>`;
+      l.appendChild(i);
+    });
+  });
+}
+
+function clearHistory(){
+  if(!confirm('Clear all door history?'))return;
+  fsdb.collection('doorHistory').get().then(s=>{const b=fsdb.batch();s.forEach(d=>b.delete(d.ref));return b.commit();}).then(()=>roomLog('History cleared','w'));
+}
+
+// ── STUDIO ROOM ──
+const STUDIO_DEVICES=['light1','light2','light3','ac'];
+
+function updStudio(device,on){
+  // Card
+  const card=document.getElementById('sCard-'+device);
+  const pill=document.getElementById('sPill-'+device);
+  const txt=document.getElementById('sTxt-'+device);
+  const tog=document.getElementById('sTog-'+device);
+  if(card)card.className='device-card'+(on?' on':'');
+  if(pill)pill.className='pill '+(on?'on':'off');
+  if(txt)txt.textContent=on?'On':'Off';
+  if(tog)tog.checked=on;
+  // Home status
+  const homeMap={light1:'hSL1',light2:'hSL2',light3:'hSL3',ac:'hSAC'};
+  const hEl=document.getElementById(homeMap[device]);
+  if(hEl){hEl.textContent=on?'On':'Off';hEl.className='hs-val '+(on?'on':'off');}
+  // Active lights count on studio page
+  const lights=['light1','light2','light3'];
+  const activeLights=lights.filter(d=>{const t=document.getElementById('sTog-'+d);return t&&t.checked;}).length;
+  const alEl=document.getElementById('sActiveLights');
+  if(alEl)alEl.textContent=activeLights;
+  // Studio AC status
+  const scEl=document.getElementById('sStudioConn');
+  if(scEl){
+    const acOn=document.getElementById('sTog-ac')&&document.getElementById('sTog-ac').checked;
+    scEl.textContent=acOn?'On':'Standby';
+    scEl.className='s-val '+(acOn?'on':'u');
+  }
+  // Firebase status indicator
+  const fsEl=document.getElementById('sFirebaseStatus');
+  if(fsEl){fsEl.textContent='Live';fsEl.className='s-val on';}
+}
+
+function ctrlStudio(device,on){
+  rtdb.ref('/studio/'+device).set(on?1:0);
+}
+
+function ctrlStudioAll(on){
+  rtdb.ref('/studio/all').set(on?1:-1);
+  // Optimistic UI update
+  STUDIO_DEVICES.forEach(d=>updStudio(d,on));
+}
+
+// Studio Firebase listeners
+STUDIO_DEVICES.forEach(dev=>{
+  rtdb.ref('/studio/'+dev).on('value',s=>{
+    if(s.val()!==null) updStudio(dev,s.val()===1);
+  });
+});
+
+// ── MAINTENANCE SPEAK + BEEP ──
+// Separate beep loop for maintenance
+let maintBeepInterval=null;
+let maintCurrentId=null;
+const maintShown={};
+
+function startMaintBeepLoop(){
+  stopMaintBeepLoop();
+  beepReminder();
+  maintBeepInterval=setInterval(()=>beepReminder(),4000);
+}
+function stopMaintBeepLoop(){
+  if(maintBeepInterval){clearInterval(maintBeepInterval);maintBeepInterval=null;}
+}
+
+function checkMaintAlerts(){
+  const now=nowMin();
+  // Only alert for tasks that are applicable TODAY
+  const active=maintTasks.find(t=>{
+    if(!isMaintTaskActiveToday(t))return false;
+    const diff=toMin24(t.h,t.m,t.ampm)-now;
+    return !maintChecks[t.id]&&diff<=0&&diff>=-1;
+  });
+  if(active&&!maintShown[active.id]){
+    maintShown[active.id]=true;
+    maintCurrentId=active.id;
+    speak('Maintenance reminder! '+MACHINE_LABELS[active.machine]+'. '+active.text);
+    setTimeout(()=>startMaintBeepLoop(),3000);
+    showMaintPopup(active);
+    sendNotif('🔧 '+MACHINE_LABELS[active.machine],active.text+' — '+fmt12(active.h,active.m,active.ampm),'🔧');
+  }
+}
+
+function showMaintPopup(t){
+  document.getElementById('pEmoji').textContent=t.emoji;
+  document.getElementById('pTime').textContent=fmt12(t.h,t.m,t.ampm);
+  document.getElementById('pTask').textContent=t.text;
+  document.getElementById('pSec').textContent='🔧 '+MACHINE_LABELS[t.machine];
+  document.getElementById('beepStatus').classList.remove('hidden');
+  document.getElementById('popup').classList.add('show');
+  // Override ack/snooze for maintenance
+  document.getElementById('popup').dataset.type='maint';
+}
+
+// Override doAck to handle both reminder and maintenance
+const _origDoAck=window.doAck;
+function doAck(){
+  const type=document.getElementById('popup').dataset.type;
+  document.getElementById('popup').classList.remove('show');
+  document.getElementById('popup').dataset.type='';
+  stopBeepLoop();stopMaintBeepLoop();
+  window.speechSynthesis&&window.speechSynthesis.cancel();
+  document.getElementById('beepStatus').classList.add('hidden');
+  beepShort();
+  // ✅ Re-enable all buttons
+  document.querySelectorAll('.btn,.toggle input').forEach(b=>b.disabled=false);
+  if(type==='maint'){
+    if(maintCurrentId){toggleMaint(maintCurrentId);maintCurrentId=null;}
+  } else {
+    if(!currentId)return;
+    ackedSet.add(currentId);saveFS();currentId=null;renderAll();
+  }
+}
+
+function doSnooze(){
+  const type=document.getElementById('popup').dataset.type;
+  document.getElementById('popup').classList.remove('show');
+  document.getElementById('popup').dataset.type='';
+  stopBeepLoop();stopMaintBeepLoop();
+  window.speechSynthesis&&window.speechSynthesis.cancel();
+  // ✅ Re-enable all buttons
+  document.querySelectorAll('.btn,.toggle input').forEach(b=>b.disabled=false);
+  if(type==='maint'){
+    const id=maintCurrentId;maintCurrentId=null;
+    if(id)setTimeout(()=>{delete maintShown[id];},5*60*1000);
+  } else {
+    if(!currentId)return;
+    const id=currentId;snoozeMap[id]=true;currentId=null;
+    setTimeout(()=>{delete snoozeMap[id];if(window._shown)delete window._shown[id];renderAll();},5*60*1000);
+  }
+}
+
+// ── NAVIGATION ──
+function switchPage(name,btn){
+  document.querySelectorAll('.pane').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.sb-item').forEach(b=>b.classList.remove('active'));
+  document.getElementById('pane-'+name).classList.add('active');
+  if(btn)btn.classList.add('active');
+  const t={
+    home:['Home','Overview — all systems at a glance'],
+    reminders:['Reminders',"Today's schedule & alerts"],
+    machineroom:['Machine Room','Live control & monitoring'],
+    history:['Door History','All unlock & lock events'],
+    maintenance:['Machine Maintenance','DTF • Embroidery • Inverter • 3D Printer'],
+    studioroom:['Studio Room','Light 1 • Light 2 • Light 3 • AC — Firebase control']
+  };
+  if(t[name]){
+    document.getElementById('pageTitle').textContent=t[name][0];
+    document.getElementById('pageSub').textContent=t[name][1];
+  }
+  if(name==='maintenance')renderMaintContent();
+}
+function switchSub(n,b){
+  document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.sub-tab').forEach(x=>x.classList.remove('active'));
+  document.getElementById('st-'+n).classList.add('active');b.classList.add('active');
+}
+function switchMaint(machine,btn){
+  currentMaintMachine=machine;
+  document.querySelectorAll('.maint-machine-tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderMaintContent();
+}
+
+// ── INIT ──
+updateNotifBtn();
+if(Notification.permission==='default'){
+  setTimeout(()=>Notification.requestPermission().then(p=>{notifPerm=p;updateNotifBtn();}),2500);
+}
+try{loadFirestore();loadHistory();}catch(e){console.log(e);}
+tick();setInterval(tick,1000);
+renderAll();renderMaintContent();renderHomeMaint();
+setInterval(()=>{renderAll();renderHomeMaint();checkMaintAlerts();},10000);
+</script>
+<script>
+// ── PWA SERVICE WORKER ──
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    // Inline Service Worker via Blob
+    const swCode=`
+      const CACHE='cc-dashboard-v1';
+      const ASSETS=['/cc-dashboard/'];
+      self.addEventListener('install',e=>{
+        e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)));
+        self.skipWaiting();
+      });
+      self.addEventListener('activate',e=>{
+        e.waitUntil(clients.claim());
+      });
+      self.addEventListener('fetch',e=>{
+        e.respondWith(fetch(e.request).catch(()=>caches.match(e.request)));
+      });
+    `;
+    const blob=new Blob([swCode],{type:'application/javascript'});
+    const swUrl=URL.createObjectURL(blob);
+    navigator.serviceWorker.register(swUrl,{scope:'/cc-dashboard/'})
+      .then(()=>console.log('✅ SW registered'))
+      .catch(e=>console.log('SW error:',e));
+  });
+}
+
+// ── PWA INSTALL PROMPT ──
+let deferredPrompt=null;
+window.addEventListener('beforeinstallprompt',e=>{
+  e.preventDefault();
+  deferredPrompt=e;
+  // Show custom install button
+  showInstallBtn();
+});
+
+function showInstallBtn(){
+  // Check if button already exists
+  if(document.getElementById('pwaInstallBtn'))return;
+  const btn=document.createElement('button');
+  btn.id='pwaInstallBtn';
+  btn.innerHTML='📲 Install App';
+  btn.style.cssText=`
+    position:fixed;bottom:80px;right:16px;z-index:9998;
+    background:var(--green);color:#000;
+    border:none;border-radius:50px;
+    padding:10px 18px;font-size:12px;font-weight:700;
+    cursor:pointer;box-shadow:0 4px 20px rgba(74,222,128,0.4);
+    font-family:'Space Grotesk',sans-serif;
+    animation:popIn 0.4s cubic-bezier(0.34,1.56,0.64,1);
+  `;
+  btn.onclick=async()=>{
+    if(!deferredPrompt)return;
+    deferredPrompt.prompt();
+    const result=await deferredPrompt.userChoice;
+    if(result.outcome==='accepted'){
+      btn.remove();
+      deferredPrompt=null;
+    }
+  };
+  document.body.appendChild(btn);
+}
+
+window.addEventListener('appinstalled',()=>{
+  const btn=document.getElementById('pwaInstallBtn');
+  if(btn)btn.remove();
+  deferredPrompt=null;
+  console.log('✅ App installed!');
+});
+</script>
+</body>
+</html>
